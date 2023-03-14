@@ -1,0 +1,20 @@
+{
+    "model_net_name" : "unet", 
+    "dataset" : "CC359",
+    "site" : 2,
+
+    "num_epochs": 50,
+    "batch_size" : 4,
+    "n_channels_out" : 2,
+
+    "save_name" : "dc_model.pth",
+    
+    
+    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/CC359/Reconstructed/",
+    "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints",
+    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs"
+
+
+  
+  }
+  
