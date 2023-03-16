@@ -1,7 +1,7 @@
 import os
 import json
 import torch
-
+from models import UNet2D
 def save_model( model, config, suffix, folder_time):
         """
         implement the logic of saving model
@@ -29,5 +29,14 @@ def save_model( model, config, suffix, folder_time):
         torch.save(model.state_dict(), save_name)
 
 
-        
-        
+def load_model(config):
+    # print("config.checkpoint", config.checkpoint)
+    # print(config.n_channels_out,"config.n_channels_out")
+    # asd
+    checkpoint = config.checkpoint
+    n_channels_out = config.n_channels_out
+    model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)
+    # model.cuda(device)
+    model.load_state_dict(torch.load(checkpoint))
+
+    return model

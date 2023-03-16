@@ -7,7 +7,9 @@ from torch.utils.data import DataLoader
 import time
 from calgary_campinas_dataset import CalgaryCampinasDataset #, get_data_loader
 from utils.utils import process_config, check_config_dict
+from evaluate import predict_sub, dice_score
 from train_unet import train_model
+
 import argparse
 
 
@@ -25,14 +27,26 @@ def main(args, now, suffix, wandb_mode):
 
     print('                    Loading Data ...')
     print('----------------------------------------------------------------------')
-
+    # test = args.test
     # train_dataset, val_dataset  = get_data_loader(config)
+    if not args.test :
+        
+        print('                    Testing started ...')
+        print('----------------------------------------------------------------------')
+      
+        train_data = CalgaryCampinasDataset(config)
+        val_data   = CalgaryCampinasDataset(config, train = False, subj_index= list(range(0, 20, 1)))
 
-    train_data = CalgaryCampinasDataset(config)
-    val_data   = CalgaryCampinasDataset(config, train = False, subj_index= list(range(0, 10, 1)))
+        model = train_model(train_data,val_data, config, suffix, wandb_mode)
+    else:
+        
+        print('                    Testing started ...')
+        print('----------------------------------------------------------------------')
+        # asd
+        all_input, all_gt, all_pred, all_voxel_dim = predict_sub(config)
+        dice = dice_score(all_pred > 0.5, all_gt)
+        print("Test Dice Score", dice)
 
-    model = train_model(train_data,val_data, config, suffix, wandb_mode)
-    
 
     
 if __name__ == '__main__':
@@ -40,9 +54,9 @@ if __name__ == '__main__':
 
     # define arguments
     parser.add_argument('--config', type=str, required=True, help='path to config file')
-    parser.add_argument('--suffix', type=str, required = True, help = "path to config file")
-    parser.add_argument('--wandb_mode', type=str, help='wandb mode')
-
+    parser.add_argument('--suffix', type=str, required = True, help = "checkpoint suffix")
+    parser.add_argument('--wandb_mode', type=str, required = True, help='wandb mode')
+    parser.add_argument('--test', type = None, help = "to turn test mode on")
 
     args = parser.parse_args()
     now = time.strftime('%Y-%m-%d | %H:%M:%S', time.localtime(time.time()))

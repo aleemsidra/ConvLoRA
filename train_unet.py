@@ -26,17 +26,17 @@ from utils import logger
 
 
 # def train_model(dataset_train, dataset_val, save_model_to, save_log_to="log_exp", num_epochs=50, device=torch.device("cuda:0"), batch_size=20, initial_lr=0.001, n_channels_out=1):
-def train_model( dataset_train, dataset_val, config, suffix,  device=torch.device("cuda:0"), batch_size=20, initial_lr=0.001,  ):
-    print('----------------------------------------------------------------------')
-    print('                    Training started')
-    print('----------------------------------------------------------------------')
+def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=torch.device("cuda:0"), initial_lr=0.001):
+    # print('----------------------------------------------------------------------')
+    # print('                    Training started')
+    # print('----------------------------------------------------------------------')
     folder_time = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
 
     
     num_epochs = config.num_epochs
     batch_size = config.batch_size
     n_channels_out = config.n_channels_out
-
+    
 
     best_acc = 0
     best_dc = 0
@@ -52,7 +52,7 @@ def train_model( dataset_train, dataset_val, config, suffix,  device=torch.devic
 
 
     
-    wandb_run = wandb.init( project='UDAS', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time )
+    wandb_run = wandb.init( project='UDAS', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
 
 
     print("wandb intialized")
@@ -106,10 +106,13 @@ def train_model( dataset_train, dataset_val, config, suffix,  device=torch.devic
             if n_channels_out == 1: 
                 loss = weighted_cross_entropy_with_logits(preds, var_gt)
                 dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
-            else:
 
-                loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
-                dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
+            #     dice = evaluate_preds_surface_dice(var_gt, preds, voxel_dim)
+            # else:
+
+            # loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
+            # dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
+            # dice = evaluate_preds_surface_dice(var_gt, preds, voxel_dim)
             train_loss_total += loss.item()
             train_dice_total += dice.item()
 
@@ -157,7 +160,6 @@ def train_model( dataset_train, dataset_val, config, suffix,  device=torch.devic
 
             num_steps += 1
 
-      
         
         val_loss_total_avg = val_loss_total / num_steps
         val_dice_total_avg = val_dice_total / num_steps

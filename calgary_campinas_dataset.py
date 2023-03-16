@@ -15,12 +15,14 @@ import imageio
 
 class CalgaryCampinasDataset(Dataset):
     # def __init__(self, data_path, site=2, train=True, fold=-1, rotate=True, scale=True, subj_index=[]):
-    def __init__(self, config, train=True, fold=1, rotate=True, scale=True, subj_index=[]):
+    def __init__(self, config, train=True,  rotate=True, scale=True, subj_index=[]):
         self.rotate = rotate
         self.scale = scale
-        self.fold = fold
+        self.fold = config.fold
         self.train = train
         self.subj_index = subj_index
+        # print( "self.subj_index",  self.subj_index)
+        # asd
         self.site = config.site
         self.data_path = config.data_path
 
@@ -112,20 +114,23 @@ class CalgaryCampinasDataset(Dataset):
         
         files = np.array(sorted(os.listdir(images_path)))
         # print("length ", len(files))
-
+     
         if self.fold > 0:
+       
             files = self.get_fold(files)
             # print("files", files)
             # print("len", len(files))
-            # print(self.subj_index)
           
-        if len(self.subj_index) > 0:
-            # print(type(self.subj_index))
-
-            files = files[self.subj_index]
+        
+        # if len(self.subj_index) > 0:
+        #     # print(type(self.subj_index))
+        #     files = files[self.subj_index]
             # print("files", files)
             # print("len", len(files))
             # asd
+        # print("self.subj_index", self.subj_index, "len", len(self.subj_index))
+        # asd
+        # print(files)
         for i, f in enumerate(files):
             # print("file_name", f, type(f), f[:-7])
             # asd
@@ -179,8 +184,8 @@ class CalgaryCampinasDataset(Dataset):
 
             # print("voxel appended ", len(self.voxel_dim), "shape at first index", self.voxel_dim[0].shape,)
         
-            # if i ==0:
-            #     break
+            if i ==0:
+                break
         
         images, labels = self.unify_sizes(images, labels)
   
@@ -198,7 +203,7 @@ class CalgaryCampinasDataset(Dataset):
         self.data = torch.from_numpy(self.data)
         self.label = torch.from_numpy(self.label)
         self.voxel_dim = torch.from_numpy(self.voxel_dim)
-        # print(self.voxel_dim[0])
+        # print(self.voxel_dim)
         # asd
         # print(type(self.data))
 
@@ -211,7 +216,7 @@ class CalgaryCampinasDataset(Dataset):
         # imageio.imwrite('/home/sidra/Documents/final.png', slice_array)
        
         # print("self.data", self.data.shape, "self.label:", self.label.shape,
-        #       "self.voxel_dim", self.voxel_dim.shape)
+        #       "self.voxel_dim", self.voxel_dim.shape, "len", len(self.voxel_dim.shape))
         # asd
     def __len__(self):
         return len(self.data)
