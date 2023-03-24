@@ -2,19 +2,25 @@
     "model_net_name" : "unet", 
     "dataset" : "CC359",
     "site" : 2,
+    "fold" : -1,
+
 
     "num_epochs": 50,
-    "batch_size" : 4,
-    "n_channels_out" : 2,
+    "batch_size" : 2,
+    "n_channels_out" : 1,
 
     "save_name" : "dc_model.pth",
-    
-    
+  
+
+    "source":    "True", 
+  
     "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/CC359/Reconstructed/",
-    "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints",
-    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs"
+   
+    "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
 
+    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/unet_baseline_val_10_images_chanels_out_1_2023-03-14_04-28-00_PM/dc_model.pth"
   
   }
   

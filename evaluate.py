@@ -95,12 +95,12 @@ def predict_sub(config):
 
     # dataset = CalgaryCampinasDataset(data_path, site, fold, train=False, subj_index=[])
 
-    dataset = CalgaryCampinasDataset(config, train=False, subj_index=[])
+    dataset = CalgaryCampinasDataset(config, train=False ) #, subj_index=[])
 
     # test_data = CalgaryCampinasDataset(data_path, site, train = False, subj_index= list(range(10, 20, 1)))  use this for test
 
     loader = DataLoader(dataset, batch_size=batch_size,
-                        shuffle=False, num_workers=10, drop_last=False)
+                        shuffle=False, num_workers=0, drop_last=False)
 
     model = load_model(config)
     model.cuda(device)
@@ -144,22 +144,33 @@ def predict_sub(config):
 def evaluate_preds_surface_dice(ground_truth, final_output, voxel_dim):
     tolerance = 1.0
     all_surface_dice = []
+
     print("voxel_dim", voxel_dim)
     s = 0
+
+    ground_truth=  torch.squeeze(ground_truth)
+    final_output = torch.squeeze(final_output)
+
+    print("type", type(ground_truth))
+    ground_truth = ground_truth.detach().cpu().numpy()
+    final_output = final_output.detach().cpu().numpy()
     for subj in range(len(voxel_dim)):
         vol_size = len(voxel_dim[subj])
-        vol_size = 4
-        print("vol_size",vol_size )
-        spacing = voxel_dim[subj]
+        print("vol_size", vol_size)
+        spacing = voxel_dim[subj][0]
 
-        final_output = final_output.detach().cpu().numpy()
-        ground_truth = ground_truth.detach().cpu().numpy()
-    
+        print("mask_gt_shape", len(ground_truth.shape),"pred_shape", len(final_output.shape), 
+              "spacing",len(spacing.shape))
 
-        print("final_output", len(final_output.shape)) # batch size 4
-        print("ground_truth", len(ground_truth.shape ))  
-        print("spacing",spacing )
-  
+        asd
+        # print("spacing", spacing)
+
+        # print(type(ground_truth), type(final_output))
+        
+
+
+        # print(ground_truth.shape, final_output.shape, spacing.shape) 
+        # print("len", len(ground_truth), len(final_output), len(voxel_dim))
         surface_distances = surface_distance.metrics.compute_surface_distances(sigmoid(final_output[s:s + vol_size]) > 0.5,
                                                                                ground_truth[s:s + vol_size] > 0,
                                                                                spacing)

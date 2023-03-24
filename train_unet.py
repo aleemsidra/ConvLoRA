@@ -46,7 +46,8 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
 
     train_loader = DataLoader(dataset_train, batch_size=batch_size,
                               shuffle=True, num_workers=10, drop_last=True)
-
+    
+    
     val_loader = DataLoader(dataset_val, batch_size=batch_size,
                             shuffle=False, num_workers=10, drop_last=False)
 
@@ -57,13 +58,13 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
 
     print("wandb intialized")
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)
-    model.cuda(device)
+    
 
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
     
     CE_loss = torch.nn.CrossEntropyLoss()
 
-    # writer = SummaryWriter(log_dir=config.save_log_to)
+    writer = SummaryWriter(log_dir=config.save_log_to)
     for epoch in range(1, num_epochs + 1):
         # start_time = time.time()
 
@@ -72,58 +73,59 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
         train_dice_total = 0.0
 
         num_steps = 0
+        # for i, batch in enumerate(train_loader):
+        
         for i, batch in enumerate(train_loader):
+
             input_samples, gt_samples, _ = batch
 
-            input_samples, gt_samples, voxel_dim = batch
-            
-            var_input = input_samples.cuda(device)
-            var_gt = gt_samples.cuda(device, non_blocking=True)
-
-        
+   
+            if torch.cuda.is_available():
+                var_input = input_samples.cuda(device)
+                var_gt = gt_samples.cuda(device)
+                model = model.cuda()
+         
             preds = model(var_input)
-            # print("preds", preds)
-
-            # if n_channels_out == 1:
-            #     loss = weighted_cross_entropy_with_logits(preds, var_gt)
-
-            #     if config.dataset == "CC359":
-
-            #         dice = evaluate_preds_surface_dice(var_gt, preds, voxel_dim)
-            #     else: 
-            #         dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
-            # else:
-            #     loss = CE_loss(preds, torch.argmax(var_gt, dim=1))  
-
-            #     if config.dataset == "CC359":
-
-            #         dice = evaluate_preds_surface_dice(var_gt, preds, voxel_dim)
-            #     else:
-            #         dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
 
 
+            if n_channels_out == 1:
+                loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          #understand this
+               
+                # print("shape", preds.shape, var_gt.shape, type(preds))
 
-            if n_channels_out == 1: 
-                loss = weighted_cross_entropy_with_logits(preds, var_gt)
-                dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
 
-            #     dice = evaluate_preds_surface_dice(var_gt, preds, voxel_dim)
-            # else:
+                # preds = torch.sigmoid(preds) > 0.5
 
-            # loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
-            # dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
-            # dice = evaluate_preds_surface_dice(var_gt, preds, voxel_dim)
+                
+                # dice = evaluate_preds_surface_dice(preds, var_gt, voxel_dim)
+                
             train_loss_total += loss.item()
-            train_dice_total += dice.item()
+            # train_dice_total += dice.item()
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             num_steps += 1
-          
- 
+            if epoch  == 1:
+                grid_img = vutils.make_grid(input_samples[:4],
+                                            normalize=False,
+                                            scale_each=False)
+                writer.add_image('Train Input', grid_img, epoch)
+
+                grid_img = vutils.make_grid(preds.data.cpu()[:4],
+                                            normalize=False,
+                                            scale_each=False)
+                writer.add_image('Train Predictions', grid_img, epoch)
+
+                grid_img = vutils.make_grid(gt_samples[:4],
+                                            normalize=False,
+                                            scale_each=False)
+                writer.add_image('Train Ground Truth', grid_img, epoch)
+
+
+        # asd
         train_loss_total_avg = train_loss_total / num_steps
-        train_dice_total_avg = train_dice_total / num_steps
+        # train_dice_total_avg = train_dice_total / num_steps
 
         model.eval()
 
@@ -138,8 +140,8 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
 
         for i, batch in enumerate(val_loader):
 
-            input_samples, gt_samples, _ = batch
-
+            input_samples, gt_samples, voxel_dim = batch
+           
             with torch.no_grad():
                 var_input = input_samples.cuda(device)
                 var_gt = gt_samples.cuda(device, non_blocking=True)
@@ -147,11 +149,25 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
                 preds = model(var_input)
 
                 if n_channels_out == 1:
-                    loss = weighted_cross_entropy_with_logits(preds, var_gt)
-                    dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
-                else:
-                    loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
-                    dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
+                    loss = CE_loss(preds, torch.argmax(var_gt, dim=1))  
+                    # dice = evaluate_preds_surface_dice((torch.sigmoid(preds) > 0.5).cpu().numpy(), var_gt.cpu().numpy(), voxel_dim)
+        
+                 
+                    # print("shape", preds.shape, var_gt.shape, type(preds))
+
+
+                    dice = evaluate_preds_surface_dice(preds, var_gt, voxel_dim)
+
+                    # dice = evaluate_preds_surface_dice((torch.sigmoid(preds) > 0.5).cpu().numpy(), var_gt.cpu().numpy(), voxel_dim)
+
+
+                    # dice = evaluate_preds_surface_dice(torch.sigmoid(preds) > 0.5, var_gt, voxel_dim)
+                    # loss = weighted_cross_entropy_with_logits(preds, var_gt)
+                    # dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
+
+                # else:
+                #     loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
+                #     dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
 
                 val_loss_total += loss.item()
                 val_dice_total += dice.item()
@@ -160,21 +176,25 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
 
             num_steps += 1
 
-        
+            if epoch % 30 == 0 or epoch % num_epochs == 0:
+                grid_img = vutils.make_grid(input_samples[:4],
+                                            normalize=False,
+                                            scale_each=False)
+                writer.add_image('Val Input', grid_img, epoch)
+
+                grid_img = vutils.make_grid(preds.data.cpu()[:4],
+                                            normalize=False,
+                                            scale_each=False)
+                writer.add_image('Val Predictions', grid_img, epoch)
+
+                grid_img = vutils.make_grid(gt_samples[:4],
+                                            normalize=False,
+                                            scale_each=False)
+                writer.add_image('Val Ground Truth', grid_img, epoch)
+
         val_loss_total_avg = val_loss_total / num_steps
         val_dice_total_avg = val_dice_total / num_steps
-        
 
-        # print('avg val loss', val_loss_total_avg)
-        # print('avg val dice', val_dice_total_avg)
-        # writer.add_scalars('losses', {
-        #     'train_loss': train_loss_total_avg,
-        #     'val_loss': val_loss_total_avg
-        # }, {"epoch": epoch} , 'DC', {
-        #     'Train DC': train_dice_total_avg,
-        #     'Valid DC': val_dice_total_avg}
-        # )
-        # asd
   
         
 
@@ -201,13 +221,11 @@ def train_model( dataset_train, dataset_val, config, suffix, wandb_mode, device=
         #     break
 
     
-        
-        # logger.write()
-        
+
         wandb_run.log({
                         "Epoch": epoch,
                         "Train Loss": train_loss_total_avg,
-                        "Train DC":   train_dice_total_avg,
+                        # "Train DC":   train_dice_total_avg,
                         "Valid Loss": val_loss_total_avg,
                         "Valid DC":   val_dice_total_avg
 
