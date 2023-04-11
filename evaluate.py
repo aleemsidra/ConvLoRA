@@ -5,9 +5,9 @@ import numpy as np
 import torch
 from torch.utils.data import DataLoader
 from save_model import load_model
-import surface_distance.metrics
+import surface_distance.metrics as surf_dc
 from models import UNet2D
-
+from IPython import embed
 from calgary_campinas_dataset import CalgaryCampinasDataset
 
 
@@ -139,44 +139,26 @@ def predict_sub(config):
     return all_input, all_gt, all_pred, all_voxel_dim
 
 
-
-
 def evaluate_preds_surface_dice(ground_truth, final_output, voxel_dim):
     tolerance = 1.0
     all_surface_dice = []
 
-    print("voxel_dim", voxel_dim)
     s = 0
-
-    ground_truth=  torch.squeeze(ground_truth)
-    final_output = torch.squeeze(final_output)
-
-    print("type", type(ground_truth))
-    ground_truth = ground_truth.detach().cpu().numpy()
-    final_output = final_output.detach().cpu().numpy()
     for subj in range(len(voxel_dim)):
         vol_size = len(voxel_dim[subj])
-        print("vol_size", vol_size)
         spacing = voxel_dim[subj][0]
-
-        print("mask_gt_shape", len(ground_truth.shape),"pred_shape", len(final_output.shape), 
-              "spacing",len(spacing.shape))
-
-        asd
-        # print("spacing", spacing)
-
-        # print(type(ground_truth), type(final_output))
+        embed()
+        # surface_distances = surface_distance.metrics.compute_surface_distances(sigmoid(final_output[s:s + vol_size]) > 0.5,
+        #                                                                        ground_truth[s:s + vol_size] > 0,
+        #                                                                        spacing)
         
-
-
-        # print(ground_truth.shape, final_output.shape, spacing.shape) 
-        # print("len", len(ground_truth), len(final_output), len(voxel_dim))
-        surface_distances = surface_distance.metrics.compute_surface_distances(sigmoid(final_output[s:s + vol_size]) > 0.5,
-                                                                               ground_truth[s:s + vol_size] > 0,
+        surface_distances = surface_distance.metrics.compute_surface_distances(final_output[s:s + vol_size] ,
+                                                                               ground_truth[s:s + vol_size] ,
                                                                                spacing)
         surface_dice = surface_distance.metrics.compute_surface_dice_at_tolerance(surface_distances, tolerance)
 
-        print(surface_dice)
+        print("surface of one image", surface_dice)
+        # embed()
         all_surface_dice.append(surface_dice)
 
         s += vol_size
@@ -184,8 +166,10 @@ def evaluate_preds_surface_dice(ground_truth, final_output, voxel_dim):
     avg_surf_dice = np.average(all_surface_dice)
 
     print('avg_surf_dice', avg_surf_dice)
-
+    # embed()
     return avg_surf_dice
+
+
 
 
 def unify_shapes(data):
@@ -202,7 +186,9 @@ def unify_shapes(data):
 
 
 def sigmoid(x):
-    return 1 / (1 + np.exp(-x))
+    # return 1 / (1 + np.exp(-x))
+    return 1 / (1 + np.exp([-x for x in x]))
+ 
 
 
 # def dice_score(input_, target, n_outputs=1, print_=False, average=True):
@@ -241,4 +227,15 @@ def pad_data(data_array, max_size):
     b = (max_size - current_size) // 2
     a = max_size-(b+current_size)
     return np.pad(data_array, ((0,0),(0,0),(b,a),(b,a)), mode='edge')
+
+
+
+
+def sdice(a, b, spacing,tolerance= 1):
+
+    # update this code to loop over segemnted volumeS (LINE 170 in train_unet)
+    surface_distances = surf_dc.compute_surface_distances(a, b, spacing)
+    return surf_dc.compute_surface_dice_at_tolerance(surface_distances, tolerance)
+
+
 

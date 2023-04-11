@@ -5,9 +5,10 @@ from requests import request
 import torch
 from torch.utils.data import DataLoader
 import time
-from calgary_campinas_dataset import CalgaryCampinasDataset , cc359_volume#, get_data_loader
+from calgary_campinas_dataset import CalgaryCampinasDataset , cc359_3d_volume
 from utils.utils import process_config, check_config_dict
 from evaluate import predict_sub, dice_score
+from model_dice import train_dice_model
 from train_unet import train_model
 import matplotlib.pyplot as plt
 
@@ -26,16 +27,32 @@ def main(args, now, suffix, wandb_mode):
     # train_dataset, val_dataset  = get_data_loader(config)
     if not args.test :
         
-        print('                    Training started ...')
-        print('----------------------------------------------------------------------')
+        # print('                    Training started ...')
+        # print('----------------------------------------------------------------------')
       
         train_data = CalgaryCampinasDataset(config)
+        train_dice_data = cc359_3d_volume(config)
+        val_data = cc359_3d_volume(config, train= False)
+        # img = train_data[127][0].squeeze()  # slice-wise visulization -> ask kevin
+        # plt.imshow(img, cmap="gray")
+        # plt.show()
+        # asd
+
+        # train_data = cc359(config)
+        # val_data = cc359(config, train= False)
+        # train_data = cc359_update(config)
+        # val_data =   cc359_update(config, train= False)
+
+        
+        # embed()
+        # print("train data loaded")
+
         # train_dice = cc359_volume(config)
-
-        val_data   = cc359_volume(config, train = False)
-
-
-
+        # print("train dice loaded")
+      
+        # val_data   = cc359_volume(config, train = False)
+        # print("val data loaded")
+        # embed()
         # print("train_data",train_data[0][0].shape)
 
         # print("val_data",val_data[0][0].shape)
@@ -43,49 +60,57 @@ def main(args, now, suffix, wandb_mode):
       
 
         # train_loader = DataLoader(train_data, batch_size=config.batch_size,
-        #                       shuffle=True, num_workers=10, drop_last=True)
+        #                       shuffle=True, num_workers=0, drop_last=False)  #change shuffle to true
         
-        val_loader = DataLoader(val_data, batch_size=config.batch_size,
-                              shuffle=False, num_workers=0, drop_last=False)
+        
+        # train_dice_loader = DataLoader(train_dice, batch_size=config.batch_size,
+        #                       shuffle=False, num_workers=0, drop_last=True)
+
+        # val_loader = DataLoader(val_data, batch_size=config.batch_size,
+        #                       shuffle=False, num_workers=0, drop_last=False)
 
 
         # Display image and label.
-        train_features, train_labels, voxel = next(iter(val_loader))
-        
+        # train_features, train_labels, voxel = next(iter(train_dice_loader))
+       
         # train_features, train_labels = next(iter(val_loader))
 
         # print(f"Feature batch shape: {train_features.size()}")
         # print(f"Labels batch shape: {train_labels.size()}")
-        # img = train_features[0].squeeze().permute(1,2,0)[:,:,127] #getting slice from imag
+        # embed()
+        # img = train_labels[0].squeeze().permute(1,2,0)[127,:,:] #getting axials slice from image
+        # img = train_features.squeeze().permute(1,2,0)[:,:,127] #getting sagital slice from image
+ 
+        # img = train_features[0].squeeze()[127,:,:] #getting axial slice from image
+
         # plt.imshow(img, cmap="gray")
         # plt.show()
-      
+        # asd
      
 
-        model = train_model(train_data, val_data, config, suffix, wandb_mode)
+        model = train_model(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
    
       
         # train_data = cc359_volume(config)
         # print("type", type(train_data)) # it should give 224,1,256,256 , but giving other wise
      
         # print("shape", train_data[1][0].data.shape, train_data[1][1].data.shape)
-        asd
+        # asd
         # print("shape",train_data[0][1].shape, train_data[0][2]) # voxel dim should be 224,3 (for one image)
     
         # print("len", len(train_data))
 
         # asd
 
-        train_loader = DataLoader(train_data, batch_size=config.batch_size,
-                              shuffle=True, num_workers=10, drop_last=True)
+        # train_loader = DataLoader(train_dice, batch_size=config.batch_size,
+        #                       shuffle=True, num_workers=10, drop_last=True)
         
-        # Display image and label.
-        train_features, train_labels = next(iter(train_loader))
-        embed()
-        print(f"Feature batch shape: {train_features.size()}")
-        print(f"Labels batch shape: {train_labels.size()}")
+        # # Display image and label.
+        # train_features, train_labels,_ = next(iter(train_loader))
+        # print(f"Feature batch shape: {train_features.size()}")
+        # print(f"Labels batch shape: {train_labels.size()}")
 
-        asd
+        # asd
 
         # print(train_features[0].shape)
 
@@ -97,7 +122,10 @@ def main(args, now, suffix, wandb_mode):
       
         # asd
       
-        model = train_model(train_data,val_data, config, suffix, wandb_mode)
+        # model = train_model(train_data, val_data, config, suffix, wandb_mode)
+
+        # model = train_dice_model(train_dice, config, suffix, wandb_mode)
+
     else:
         
         print('                    Testing started ...')

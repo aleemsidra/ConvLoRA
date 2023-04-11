@@ -4,9 +4,8 @@
     "site" : 2,
     "fold" : -1,
 
-
     "num_epochs": 50,
-    "batch_size" : 2,
+    "batch_size" : 4,
     "n_channels_out" : 1,
 
     "save_name" : "dc_model.pth",

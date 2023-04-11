@@ -1,0 +1,1 @@
+python main.py --config ./config/config_baseline.json --suffix "beseline" --wandb_mode "online" >> baseline.txt
