@@ -122,23 +122,23 @@ if __name__ == '__main__':
 
 
 
-def log_images(input, preds, gt, epoch, stage):
+def log_images(input, preds, gt, epoch, stage, img_id = ""):
 
     grid_img = vutils.make_grid(input, 
                                 normalize=False, scale_each=False)
     
-    wandb.log({f"{stage}_Input images_Epoch: {epoch}": wandb.Image(grid_img)}, step=wandb.run.step)
+    wandb.log({f"{stage}_Input images_Epoch: {epoch}_{img_id}": wandb.Image(grid_img)}, step=wandb.run.step)
 
     grid_img = vutils.make_grid(preds,
                                 normalize=False,
                                 scale_each=False)
     
 
-    wandb.log({f"{stage}_predictions_Epoch: {epoch}": wandb.Image(grid_img)}, step=wandb.run.step)
+    wandb.log({f"{stage}_predictions_Epoch: {epoch}_{img_id}": wandb.Image(grid_img)}, step=wandb.run.step)
 
     grid_img = vutils.make_grid(gt,
                                 normalize=False,
                                 scale_each=False)
     
-    wandb.log({f"{stage}_Ground truth_Epoch: {epoch}": wandb.Image(grid_img)}, step=wandb.run.step)
+    wandb.log({f"{stage}_Ground truth_Epoch: {epoch}_{img_id}": wandb.Image(grid_img)}, step=wandb.run.step)
 

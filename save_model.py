@@ -30,9 +30,7 @@ def save_model( model, config, suffix, folder_time):
 
 
 def load_model(config):
-    # print("config.checkpoint", config.checkpoint)
-    # print(config.n_channels_out,"config.n_channels_out")
-    # asd
+    print("loading checkpoint")
     checkpoint = config.checkpoint
     n_channels_out = config.n_channels_out
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)
