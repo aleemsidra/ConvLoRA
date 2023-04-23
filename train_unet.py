@@ -1,5 +1,5 @@
 # Train UNet model on the Calgary Campinas or M&Ms Dataset
-# Author: Rasha Sheikh
+
 
 import numpy as np
 import torch

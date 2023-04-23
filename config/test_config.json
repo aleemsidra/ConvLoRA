@@ -3,7 +3,7 @@
 {
     "model_net_name" : "unet", 
     "dataset" : "CC359",
-    "site" : 6,
+    "site" : 2,
     "fold" : -1,
 
     "num_epochs": 100,

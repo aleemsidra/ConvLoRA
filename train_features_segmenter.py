@@ -1,52 +1,57 @@
 # Train FeaturesSegmenter model on the Calgary Campinas or M&Ms Dataset
-# Author: Rasha Sheikh
+
 
 import numpy as np
+import wandb
 import torch
+
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 from torch import optim
-from tensorboardX import SummaryWriter
-from tqdm import tqdm
+from save_model import save_model
+
 import time
 from dpipe.torch.functional import weighted_cross_entropy_with_logits
+from models import FeaturesSegmenter
+from models import UNet2D
+from save_model import load_model
+from evaluate import sdice
+from utils.utils import log_images
+from datetime import datetime
+from IPython import embed
 
-from .models import FeaturesSegmenter
-from .evaluate import dice_score
 
+def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb_mode, initial_lr=0.001, level=0, device=torch.device("cuda:0")):
 
-def train_model(dataset_train, dataset_val, save_model_to, unet_model, save_log_to="log_exp", num_epochs=50,
-                device=torch.device("cuda:0"), batch_size=20, initial_lr=0.001, level=0, n_channels_out=1):
-
+    num_epochs = config.num_epochs
+    batch_size = config.batch_size
+    folder_time = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
+    n_channels_out = config.n_channels_out
+    
+    wandb_run = wandb.init( project='UDAS', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     train_loader = DataLoader(dataset_train, batch_size=batch_size,
-                              shuffle=True, num_workers=10, drop_last=True)
+                              shuffle=True, num_workers=0, drop_last=True)
 
-    val_loader = DataLoader(dataset_val, batch_size=batch_size,
-                            shuffle=False, num_workers=10, drop_last=False)
-
+    best_acc = 0
     assert (level <= 1)
 
     in_channels = 16 * (2 ** level)
     model = FeaturesSegmenter(in_channels=in_channels, out_channels=n_channels_out)
     model.cuda(device)
 
+    unet_model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16) 
+    unet_model = load_model(config)   
     unet_model.cuda(device)
     unet_model.eval()
 
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
-    
-    CE_loss = torch.nn.CrossEntropyLoss()
 
-    writer = SummaryWriter(log_dir=save_log_to)
-
-    #    for epoch in tqdm(range(1, num_epochs+1)):
     for epoch in range(1, num_epochs + 1):
-        start_time = time.time()
 
         model.train()
         train_loss_total = 0.0
-        train_dice_total = 0.0
         num_steps = 0
+
         for i, batch in enumerate(train_loader):
             input_samples, gt_samples, _ = batch
 
@@ -62,112 +67,169 @@ def train_model(dataset_train, dataset_val, save_model_to, unet_model, save_log_
                 logits_ = model(layer_activations_1)
                 preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
             
-            if n_channels_out == 1:
-                loss = weighted_cross_entropy_with_logits(preds, var_gt)
-                dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
-            else:
-                loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
-                dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
-
+          
+            loss = weighted_cross_entropy_with_logits(preds, var_gt)
             train_loss_total += loss.item()
-            train_dice_total += dice.item()
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             num_steps += 1
 
-            if epoch % 30 == 0 or epoch % num_epochs == 0:
-                grid_img = vutils.make_grid(input_samples[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Train Input', grid_img, epoch)
+            if epoch % 10 == 0  and wandb_mode == "online": 
+                # print("image", i)
+                print("logging training image")
+                mask = torch.zeros(size=preds.shape) 
+                mask[preds > 0.5] = 1
+                log_images(input_samples[:4], mask, gt_samples[:4], epoch, "Train")  
 
-                grid_img = vutils.make_grid(preds.data.cpu()[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Train Predictions', grid_img, epoch)
-
-                grid_img = vutils.make_grid(gt_samples[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Train Ground Truth', grid_img, epoch)
+            # if i == 0:
+            #     break
 
         train_loss_total_avg = train_loss_total / num_steps
-        train_dice_total_avg = train_dice_total / num_steps
-
-        print('avg train loss', train_loss_total_avg)
-        print('avg train dice', train_dice_total_avg)
-
-        model.eval()
-
-        val_loss_total = 0.0
-        val_dice_total = 0.0
 
         num_steps = 0
 
-        for i, batch in enumerate(val_loader):
-            input_samples, gt_samples, _ = batch
 
-            with torch.no_grad():
-                var_input = input_samples.cuda(device)
-                var_gt = gt_samples.cuda(device, non_blocking=True)
+        print('----------------------------------------------------------------------')
+        print('                    Train Dice Calculation')
+        print('----------------------------------------------------------------------')
+        with torch.no_grad():
+            model.eval()
+            
+            avg_train_dice = []
+            for img in range(len(dataset_train_dice)):  # looping over all 3D files
+                # print("img_id", img)
+                train_samples, gt_samples, voxel = dataset_train_dice[img]  # Get the ith image, label, and voxel
+                # print(f"Image shape: {input_samples.shape}, Label shape: {gt_samples.shape}, Voxel shape: {voxel.shape}")
+                slices = []
 
-                if level == 0:
-                    layer_activations = unet_model.init_path(var_input)
-                    preds = model(layer_activations)
-                else:  # level = 1
-                    layer_activations_0 = unet_model.init_path(var_input)
-                    layer_activations_1 = unet_model.down1(layer_activations_0)
-                    logits_ = model(layer_activations_1)
-                    preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
+                for slice_id, img_slice in enumerate(train_samples): # looping over single img             
+                    img_slice = img_slice.unsqueeze(0)
+                    img_slice = img_slice.to(device)
 
-                if n_channels_out == 1:
-                    loss = weighted_cross_entropy_with_logits(preds, var_gt)
-                    dice = dice_score(torch.sigmoid(preds) > 0.5, var_gt)
-                else:
-                    loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
-                    dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(var_gt, dim=1), n_outputs=n_channels_out)
+                    if level == 0:
+                        layer_activations = unet_model.init_path(img_slice)
+                        preds = model(layer_activations)
+                        
+                    else:  # level = 1
+                        layer_activations_0 = unet_model.init_path(img_slice)
+                        layer_activations_1 = unet_model.down1(layer_activations_0)
+                        logits_ = model(layer_activations_1)
+                        preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
 
-                val_loss_total += loss.item()
-                val_dice_total += dice.item()
+                    slices.append(preds.squeeze().detach().cpu())
+        
+                segmented_volume = torch.stack(slices, dim=0)
+                # embed()
+                slices.clear()
 
-            num_steps += 1
+                train_dice = sdice(gt_samples.squeeze().numpy()>0,
+                                   torch.sigmoid(segmented_volume).numpy() >0.5,
+                                    voxel[img])
+                
+                avg_train_dice.append(train_dice)
 
-            if epoch % 30 == 0 or epoch % num_epochs == 0:
-                grid_img = vutils.make_grid(input_samples[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Val Input', grid_img, epoch)
+                if epoch % 10 == 0 and img == 0 and wandb_mode == "online":
+        
+                    print("logging train_dice_images")
+                    mask = torch.zeros(size=segmented_volume[125:129].shape) 
+                    mask[torch.sigmoid(segmented_volume[125:129]) > 0.5] = 1 #thresholding
+                    log_images(train_samples[125:129], mask.unsqueeze(1), gt_samples[125:129], epoch , "Train_dice")
 
-                grid_img = vutils.make_grid(preds.data.cpu()[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Val Predictions', grid_img, epoch)
 
-                grid_img = vutils.make_grid(gt_samples[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Val Ground Truth', grid_img, epoch)
+            #     if img == 2:
+            #         break
+            
+            # embed()
+            avg_train_dice = np.mean(avg_train_dice)
 
-        val_loss_total_avg = val_loss_total / num_steps
-        val_dice_total_avg = val_dice_total / num_steps
+        # embed()
 
-        print('avg val loss', val_loss_total_avg)
-        print('avg val dice', val_dice_total_avg)
+        print('----------------------------------------------------------------------')
+        print('                    Val Dice Calculation')
+        print('----------------------------------------------------------------------')
+        
+        with torch.no_grad():
+            model.eval()
+            avg_val_dice = []
+            total_loss = 0.0
+            val_loss_total_avg = 0.0 
+            slices = []
 
-        writer.add_scalars('losses', {
-            'train_loss': train_loss_total_avg,
-            'val_loss': val_loss_total_avg
-        }, epoch)
+            for img in range(len(dataset_val)):
+                # print("img_id", img)
+                input_samples, gt_samples, voxel = dataset_val[img] # Get the ith image, label, and voxel
+                # print(f"Image shape: {input_samples.shape}, Label shape: {gt_samples.shape}, Voxel shape: {voxel.shape}")
+                slices = []
+                for slice_id, img_slice in enumerate(input_samples):
+                    # print("slice_id:", slice_id)
+                    # embed()
+                    img_slice = img_slice.unsqueeze(0)
+                    img_slice = img_slice.to(device)
 
-        end_time = time.time()
-        total_time = end_time - start_time
-        tqdm.write("Epoch {} took {:.2f} seconds.".format(epoch, total_time))
+                    if level == 0:
+                        layer_activations = unet_model.init_path(img_slice)
+                        preds = model(layer_activations)
+                        # embed()
+                        
+                    else:  # level = 1
+                        layer_activations_0 = unet_model.init_path(img_slice)
+                        layer_activations_1 = unet_model.down1(layer_activations_0)
+                        logits_ = model(layer_activations_1)
+                        preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
 
-        if epoch % 2 == 0:
-            torch.save(model.state_dict(), save_model_to)
+                    slices.append(preds.squeeze().detach().cpu())
+                val_segmented_volume = torch.stack(slices, dim=0)
+                slices.clear()
+                # embed()
+                loss = weighted_cross_entropy_with_logits(val_segmented_volume.unsqueeze(1), gt_samples)
+                total_loss += loss.item()
+                                        
+                val_dice = sdice(gt_samples.squeeze().numpy()>0,
+                                torch.sigmoid(val_segmented_volume).numpy() >0.5,
+                                voxel[img])
+                avg_val_dice.append(val_dice)
 
-    torch.save(model.state_dict(), save_model_to)
+                if epoch % 10 == 0 and wandb_mode == "online" and img == 0 :
+                # if epoch == 1 and wandb_mode == "online" and img == 0 :
+                    print("logging val_dice_images")
+                    mask = torch.zeros(size=val_segmented_volume[125:129].shape) 
+                    mask[torch.sigmoid(val_segmented_volume[125:129]) > 0.5] = 1
+                    log_images(input_samples[125:129], mask.unsqueeze(1), gt_samples[125:129], epoch , "Val_dice", img)  
 
+                
+                # if img == 2:
+                #     break
+                    
+            
+            # embed()
+            val_loss_total_avg = total_loss / len(dataset_val)
+            avg_val_dice  =  np.mean(avg_val_dice)
+            print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss, {val_loss_total_avg}, Valid DC: {avg_val_dice}')
+
+
+            # if epoch == 1:
+            #     break
+
+            # embed()
+            if avg_val_dice > best_acc:
+                best_acc = avg_val_dice
+                print("best_acc- after updation", best_acc)
+                save_model(model, config, suffix, folder_time)
+
+            # embed()
+            wandb_run.log({
+                            "Epoch": epoch,
+                            "Train Loss": train_loss_total_avg,
+                            "Train DC":   avg_train_dice,
+                            "Valid Loss": val_loss_total_avg,
+                            "Valid DC":   avg_val_dice
+
+                        })
+        
+        # if epoch == 15:
+
+        #     break
+    
     return model

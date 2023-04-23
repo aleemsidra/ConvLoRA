@@ -34,7 +34,6 @@ def load_model(config):
     checkpoint = config.checkpoint
     n_channels_out = config.n_channels_out
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)
-    # model.cuda(device)
     model.load_state_dict(torch.load(checkpoint))
 
     return model

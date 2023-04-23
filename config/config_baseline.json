@@ -1,10 +1,10 @@
 {
-    "model_net_name" : "unet", 
+    "model_net_name" : "head", 
     "dataset" : "CC359",
     "site" : 2,
     "fold" : -1,
 
-    "num_epochs": 100,
+    "num_epochs":  100,
     "batch_size" : 32,
     "n_channels_out" : 1,
 
@@ -19,7 +19,7 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/unet_baseline_with_model.eval_for_train_dice_2023-04-14_05-29-52_PM/dc_model.pth"
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/unet_baseline:logits_for_loss+correct_order_for_sdc_2023-04-18_05-01-47_AM/dc_model.pth"
   
   }
   

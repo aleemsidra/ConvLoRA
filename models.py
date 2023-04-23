@@ -124,7 +124,7 @@ class UNet2D(nn.Module):
         self.return_all_activations = return_all_activations
 
     def forward(self, x):
-     
+        
         x0_0 = self.init_path[0](x)
         x0_1 = self.init_path[1](x0_0)
         x0_2 = self.init_path[2](x0_1)
@@ -151,6 +151,9 @@ class UNet2D(nn.Module):
             return [x0_2, skip0, x0, x1, skip1, x2, skip2, x3, x2_up, x1_up, x0_up, x_out]
 
     def forward_x0(self, x0):
+
+
+        print("here")
 
         x1 = self.down1(x0)
         x2 = self.down2(x1)
