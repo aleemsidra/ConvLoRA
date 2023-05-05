@@ -3,7 +3,7 @@
 {
     "model_net_name" : "unet", 
     "dataset" : "CC359",
-    "site" : 2,
+    "site" : 6,
     "fold" : -1,
 
     "num_epochs": 100,
@@ -21,7 +21,7 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/unet_baseline:logits_for_loss+correct_order_for_sdc_2023-04-18_05-01-47_AM/dc_model.pth"
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_refine_early_layers_target_siemens_3_2023-05-04_04-50-15_PM/dc_model.pth"
   
   }
   

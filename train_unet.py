@@ -48,6 +48,7 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
 
     
     wandb_run = wandb.init( project='UDAS', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
+    
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)    
     if torch.cuda.is_available():
       model = model.cuda()

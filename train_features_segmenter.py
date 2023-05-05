@@ -40,7 +40,7 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
     model.cuda(device)
 
     unet_model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16) 
-    unet_model = load_model(config)   
+    unet_model = load_model(config,unet_model )   
     unet_model.cuda(device)
     unet_model.eval()
 

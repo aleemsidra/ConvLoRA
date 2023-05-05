@@ -5,11 +5,12 @@ from requests import request
 import torch
 from torch.utils.data import DataLoader
 import time
-from calgary_campinas_dataset import CalgaryCampinasDataset , cc359_3d_volume
+from calgary_campinas_dataset import CalgaryCampinasDataset , cc359_3d_volume, cc359_refine, cc359_refine_volume
 from utils.utils import process_config, check_config_dict
 from evaluate import predict_sub, dice_score
 from train_unet import train_model
 from train_features_segmenter import train
+from refine_features import train_target
 import matplotlib.pyplot as plt
 from test import test
 
@@ -28,13 +29,25 @@ def main(args, now, suffix, wandb_mode):
         print('----------------------------------------------------------------------')
         print('                    Loading Data ...')
         print('----------------------------------------------------------------------')
-      
-        train_data = CalgaryCampinasDataset(config)
-        train_dice_data = cc359_3d_volume(config)
-        val_data = cc359_3d_volume(config, train= False)
+        
+        print("step", args.step)
+       
+        if args.step == "base_model" or args.step == "feature_segmentor":
+            train_data = CalgaryCampinasDataset(config)
+            train_dice_data = cc359_3d_volume(config)
+            val_data = cc359_3d_volume(config, train= False)
+
+        # elif args.step == "refine":
+        #     train_data = cc359_refine(config)
+        #     train_dice_data = cc359_refine_volume(config)
+        #     val_data = cc359_refine_volume(config, train= False)
+            # embed()
+
 
         if args.step == "base_model":
+
             print("Base model")
+           
             model = train_model(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
 
         elif args.step == "feature_segmentor":
@@ -42,12 +55,28 @@ def main(args, now, suffix, wandb_mode):
             print("Feature segmentor")
             train(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
 
+        else:
+            print("Refinement")
+            train_data = cc359_refine(config)
+            train_dice_data = cc359_3d_volume(config)
+            val_data = cc359_3d_volume(config, train= False)
+
+            train_target(train_data, train_dice_data, val_data, config, 
+                         suffix, wandb_mode)
+
+
+
     else:
         print('----------------------------------------------------------------------')
         print('                    Testing started ...')
         print('----------------------------------------------------------------------')
         
-        test_data =   cc359_3d_volume(config, train= False)
+        # if args.step == "base_model":
+        #     test_data =   cc359_3d_volume(config, train= False)
+        # elif args.step == "refine":
+        test_data =   cc359_3d_volume(config, train= False) # checkkkkkkkk
+
+
         final_avg_dice, loss = test(test_data, config, suffix, wandb_mode)
         print(f"Final average dice score: {final_avg_dice}, Total loss: {loss}")
   
