@@ -345,9 +345,8 @@ class cc359_refine(Dataset):
         #     self.images_path = os.path.join(data_path, 'Original', self.folde, "test_set.csv")
         #     print("test_path ", self.images_path)
         
-        files =pd.read_csv(self.images_path)
-        # files = np.array(sorted(os.listdir(self.images_path)))
-        # print("length ", len(files))
+        # files =pd.read_csv(self.images_path, header=None)
+        files =  pd.read_csv(self.images_path, header= None).values.ravel().tolist()
 
         for i, f in enumerate(files):
          
@@ -356,7 +355,8 @@ class cc359_refine(Dataset):
             # nib_file = nib.load(os.path.join(self.images_path, f))
 
             nib_file = nib.load(f)
-            # print("nib_file_dim", nib_file.shape)
+            print("nib_file_dim", nib_file.shape)
+            # embed()
             img = nib_file.get_fdata('unchanged', dtype=np.float32) #loadibg metadata
             img = img[self.range[0]:self.range[1]+1, :, :]
             # print("image", img) # image loaded in np here
@@ -386,8 +386,9 @@ class cc359_refine(Dataset):
             if img.shape[1] != img.shape[2]:
                 img = self.pad_image(img)
             images.append(img)
+            print(img.shape)
 
-          
+            
 
             if not self.sagittal:
                 lbl = np.moveaxis(lbl, -1, 0)
@@ -401,7 +402,7 @@ class cc359_refine(Dataset):
       
             self.voxel_dim.append(np.array(spacing))  
 
-   
+        # embed()
         images, labels = self.unify_sizes(images, labels)
   
         self.data = np.expand_dims(np.vstack(images), axis=1)

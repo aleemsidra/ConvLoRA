@@ -1,7 +1,7 @@
 {
     "model_net_name" : "head", 
     "dataset" : "CC359",
-    "site" : 6,
+    "site" : 1,
     "fold" : -1,
     "stage" : "refine",
 
@@ -11,6 +11,10 @@
 
     "save_name" : "dc_model.pth",
   
+    "alpha_batch" : 0.08,
+    "alpha_layer": 0.03,
+    "bn_level" : "layer",
+    "bn_momentum" : 0.1,
 
     "source":    "True", 
   
