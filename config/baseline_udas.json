@@ -1,5 +1,5 @@
 {
-    "model_net_name" : "baseline", 
+    "model_net_name" : "base_model", 
     "dataset" : "CC359",
     "site" : 2,
     "fold" : -1,
@@ -17,9 +17,7 @@
    
     "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
 
-    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
+    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs"
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/unet_baseline:logits_for_loss+correct_order_for_sdc_2023-04-18_05-01-47_AM/dc_model.pth"
   
   }
-  

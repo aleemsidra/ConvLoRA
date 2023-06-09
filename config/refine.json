@@ -1,11 +1,11 @@
 {
-    "model_net_name" : "head", 
+    "model_net_name" : "refine_init_layers_on_:", 
     "dataset" : "CC359",
-    "site" : 6,
+    "site" : 1,
     "fold" : -1,
     "stage" : "refine",
 
-    "num_epochs":  100,
+    "num_epochs":  50,
     "batch_size" : 32,
     "n_channels_out" : 1,
 
@@ -20,11 +20,9 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_baseline_with_manual_slicing_2023-04-30_05-42-20_PM/dc_model.pth",
-
-
-    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_baseline_with_manual_slicing_2023-05-01_02-54-38_PM/dc_model.pth",
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_repeat_baseline_2023-06-06_10-56-27_AM/dc_model.pth",
   
-    "stopping_thresh": 0.005
+    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/refine_head_repeat_baseline_2023-06-06_04-39-39_PM/dc_model.pth",
   
+    "stopping_thresh": 0.005  
   }

@@ -1,17 +1,17 @@
 
 
 {
-    "model_net_name" : "head", 
+    "model_net_name" : "unet", 
     "dataset" : "CC359",
-    "site" : 1,
+    "site" : 6,
     "fold" : -1,
 
-    "num_epochs": 100,
+    "num_epochs": 50,
     "batch_size" : 32,
     "n_channels_out" : 1,
 
     "save_name" : "dc_model.pth",
-    "stage": "refine",
+  
 
     "source":    "False", 
   
@@ -21,7 +21,7 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_refine_bn:layer_level_full_model_target:ge_15_alpha_layer_0.03_momentum_0.1_2023-05-11_01-42-09_PM/dc_model.pth"
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_udas_setting_epochs:100_2023-06-02_06-21-22_PM/dc_model.pth"
   
   }
   

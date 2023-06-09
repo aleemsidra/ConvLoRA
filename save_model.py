@@ -29,11 +29,10 @@ def save_model( model, config, suffix, folder_time):
         torch.save(model.state_dict(), save_name)
 
 
-def load_model(config, model ):
+def load_model(config):
     print("loading checkpoint")
     checkpoint = config.checkpoint
     n_channels_out = config.n_channels_out
-
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)
     model.load_state_dict(torch.load(checkpoint))
 
