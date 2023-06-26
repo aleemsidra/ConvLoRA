@@ -1,33 +1,58 @@
 # Refine UNet early features on the Calgary Campinas or M&Ms Dataset
-# Author: Rasha Sheikh
+
 
 import numpy as np
+import wandb
+
 import torch
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 from torch import optim
 import torch.nn.functional as F
-from tensorboardX import SummaryWriter
-from tqdm import tqdm
+from save_model import load_model
+from evaluate import sdice
 import time
 from dpipe.torch.functional import weighted_cross_entropy_with_logits
+from save_model import load_model
+from evaluate import sdice
+from models import FeaturesSegmenter
+from models import UNet2D
+from utils.utils import log_images
+from datetime import datetime
+from IPython import embed
+# from calgary_campinas_dataset import CalgaryCampinasDataset
+from save_model import save_model
 
-from .models import UNet2D
-from .calgary_campinas_dataset import CalgaryCampinasDataset
-from .evaluate import dice_score
 
 
-def train_model(dataset_train, save_model_to, model, features_segmenter, save_log_to="log_exp", num_epochs=50, device=torch.device("cuda:0"), batch_size=20, initial_lr=0.001, stopping_thresh=0.005, level=0, n_channels_out=1):
+# def train_model(dataset_train, save_model_to, model, features_segmenter, save_log_to="log_exp", num_epochs=50, device=torch.device("cuda:0"), batch_size=20, initial_lr=0.001, stopping_thresh=0.005, level=0, n_channels_out=1):
 
+def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix, wandb_mode, initial_lr=0.001, level=0, device=torch.device("cuda:0")):
+  
+    num_epochs = config.num_epochs
+    batch_size = config.batch_size
+    folder_time = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
+    n_channels_out = config.n_channels_out
+    stopping_thresh = config.stopping_thresh
+    best_dice = 0
+    patience = 0
+    
+
+    wandb_run = wandb.init( project='domain_adaptation', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     train_loader = DataLoader(dataset_train, batch_size=batch_size,
-                              shuffle=True, num_workers=10, drop_last=True)
-
-    assert (level <= 1)
-
+                              shuffle=True, num_workers=0, drop_last=True)
+    
+    in_channels = 16 * (2 ** level)
+    features_segmenter = FeaturesSegmenter(in_channels=in_channels, out_channels=n_channels_out)
+    features_segmenter.load_state_dict(torch.load(config.head_checkpoint))
     features_segmenter.cuda(device)
     features_segmenter.eval()
 
+    model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16) 
+    model.load_state_dict(torch.load(config.checkpoint)) 
     model.cuda(device)
+
+    assert (level <= 1)
 
     for p in model.parameters():
         p.requires_grad = False
@@ -43,60 +68,59 @@ def train_model(dataset_train, save_model_to, model, features_segmenter, save_lo
 
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
 
-    writer = SummaryWriter(log_dir=save_log_to)
 
-    model.eval()
-    train_dice_total = 0.0
-    train_loss_total = 0.0
-    num_steps = 0
-    for i, batch in enumerate(train_loader):
-        input_samples, _, _ = batch
 
-        var_input = input_samples.cuda(device)
+    with torch.no_grad():
+        model.eval()
+        avg_train_dice = []
+        for img in range(len(dataset_val)):  # looping over all 3D files
 
-        stronger_preds = model(var_input)
+            train_samples, gt_samples, voxel = dataset_val[img]  # Get the ith image, label, and voxel   
+            stronger_predictions = []
+            predictions = []
 
-        if level == 0:
-            layer_activations = model.init_path(var_input)
-            preds = features_segmenter(layer_activations)
-        else:  # level = 1
-            layer_activations_0 = model.init_path(var_input)
-            layer_activations_1 = model.down1(layer_activations_0)
-            logits_ = features_segmenter(layer_activations_1)
-            preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
-            
-        if n_channels_out == 1:
+            for slice_id, img_slice in enumerate(train_samples): # looping over single img             
+                img_slice = img_slice.unsqueeze(0)
+                img_slice = img_slice.to(device)
+                stronger_pred = model(img_slice)
+                stronger_predictions.append(stronger_pred.squeeze().detach().cpu())
+ 
+            stronger_preds = torch.stack(stronger_predictions, dim= 0)
+            stronger_predictions.clear()
             stronger_preds_prob = torch.sigmoid(stronger_preds)
-            loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
-            dice = dice_score(torch.sigmoid(preds) > 0.5, stronger_preds_prob > 0.5)
-        else:
-            loss = -torch.mean(F.log_softmax(preds, dim=1)*F.softmax(stronger_preds, dim=1))         
-            dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
+            # embed()
+            # train_dice = sdice(stronger_preds_prob.numpy() > 0.5,
+            #                     torch.sigmoid(preds).numpy() > 0.5,
+            #                     voxel[img])
+            train_dice = sdice(gt_samples.squeeze().numpy()>0,
+                                stronger_preds_prob.numpy() > 0.5,
+                                voxel[img])
 
-        train_dice_total += dice.item()
-        train_loss_total += loss.item()
-        num_steps += 1
+            avg_train_dice.append(train_dice)
 
-    train_dice_total_avg = train_dice_total / num_steps
+        # embed()
+        avg_train_dice = np.mean(avg_train_dice)
 
-    print('avg starting dice', train_dice_total_avg)
-    train_dice_total_avg_old = train_dice_total_avg
-
-    train_loss_total_avg = train_loss_total / num_steps
-    print('avg starting loss', train_loss_total_avg)
-
-    #    for epoch in tqdm(range(1, num_epochs+1)):
+    print('initial dice', avg_train_dice)
+    train_dice_total_avg_old = avg_train_dice
+    # train_dice_total_avg_old = 0
+    # embed()
+    # train_loss_total_avg = train_loss_total / num_steps
+    # print('avg starting loss', train_loss_total_avg)
+    
+    print('----------------------------------------------------------------------')
+    print('                    Train Loss Calculation')
+    print('----------------------------------------------------------------------')
+    
+    # embed()
     for epoch in range(1, num_epochs + 1):
-        start_time = time.time()
-
         model.train()
         train_loss_total = 0.0
-        train_dice_total = 0.0
+
         num_steps = 0
         for i, batch in enumerate(train_loader):
-            input_samples, _, _ = batch
+            input_samples, gt_samples, _ = batch
             var_input = input_samples.cuda(device)
-
             stronger_preds = model(var_input)
 
             if level == 0:
@@ -111,90 +135,179 @@ def train_model(dataset_train, save_model_to, model, features_segmenter, save_lo
             if n_channels_out == 1:
                 stronger_preds_prob = torch.sigmoid(stronger_preds)
                 loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
-                dice = dice_score(torch.sigmoid(preds) > 0.5, stronger_preds_prob > 0.5)
-            else:
-                loss = -torch.mean(F.log_softmax(preds, dim=1)*F.softmax(stronger_preds, dim=1))         
-                dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
-
+                # loss = weighted_cross_entropy_with_logits(preds, stronger_preds)
+            
             train_loss_total += loss.item()
 
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
             num_steps += 1
+            # embed()
 
-            if epoch % 30 == 0 or epoch % num_epochs == 0:
-                grid_img = vutils.make_grid(input_samples[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Train Input', grid_img, epoch)
+            if epoch % 10 == 0  and wandb_mode == "online": 
+                mask = torch.zeros(size=stronger_preds.shape) 
+                mask[stronger_preds > 0.5] = 1
+                log_images(input_samples, mask, gt_samples, epoch, "Train")
 
-                grid_img = vutils.make_grid(preds.data.cpu()[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Train Predictions', grid_img, epoch)
-
-                grid_img = vutils.make_grid(gt_samples[:4],
-                                            normalize=False,
-                                            scale_each=False)
-                writer.add_image('Train Ground Truth', grid_img, epoch)
+            # if i == 1:
+            #     break
 
         train_loss_total_avg = train_loss_total / num_steps
-
-        print('avg train loss', train_loss_total_avg)
-
-        model.eval()
-        train_dice_total = 0.0
         num_steps = 0
-        for i, batch in enumerate(train_loader):
-            input_samples, gt_samples, _ = batch
+        print('avg train loss', train_loss_total_avg)
+        # embed()
+        print('----------------------------------------------------------------------')
+        print('                    Train Dice Calculation')
+        print('----------------------------------------------------------------------')
+        with torch.no_grad():
+            model.eval()
+            avg_train_dice = []
+            for img in range(len(dataset_train_dice)):  # looping over all 3D files
+    
+                train_samples, gt_samples, voxel = dataset_train_dice[img]  # Get the ith image, label, and voxel    
+                stronger_predictions = []
+                predictions = []
+        
+                for slice_id, img_slice in enumerate(train_samples): # looping over single img             
+                    img_slice = img_slice.unsqueeze(0)
+                    img_slice = img_slice.to(device)
+                    stronger_pred = model(img_slice)
+                    stronger_predictions.append(stronger_pred.squeeze().detach().cpu())
+                    # embed()
 
-            var_input = input_samples.cuda(device)
+                    if level == 0:
+                        layer_activations = model.init_path(img_slice)
+                        prediction = features_segmenter(layer_activations)
+        
+                    else:  # level = 1
+                        layer_activations_0 = model.init_path(img_slice)
+                        layer_activations_1 = model.down1(layer_activations_0)
+                        logits_ = model(layer_activations_1)
+                        prediction = F.interpolate(logits_, scale_factor=2, mode='bilinear')
 
-            stronger_preds = model(var_input)
-
-            if level == 0:
-                layer_activations = model.init_path(var_input)
-                preds = features_segmenter(layer_activations)
-            else:  # level = 1
-                layer_activations_0 = model.init_path(var_input)
-                layer_activations_1 = model.down1(layer_activations_0)
-                logits_ = features_segmenter(layer_activations_1)
-                preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
-
-            if n_channels_out == 1:
+                    predictions.append(prediction.squeeze().detach().cpu())
+                
+        
+                preds = torch.stack(predictions, dim=0)
+                stronger_preds = torch.stack(stronger_predictions, dim= 0)
+                stronger_predictions.clear()
                 stronger_preds_prob = torch.sigmoid(stronger_preds)
-                loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
-                dice = dice_score(torch.sigmoid(preds) > 0.5, stronger_preds_prob > 0.5)
+                # embed()
+                train_dice = sdice(stronger_preds_prob.numpy() > 0.5,
+                                torch.sigmoid(preds).numpy() > 0.5,
+                                    voxel[img])
+                avg_train_dice.append(train_dice)
+
+                if epoch % 10 == 0  and wandb_mode == "online":
+                # if wandb_mode == "online":
+                    mask = torch.zeros(size=stronger_preds_prob.shape) 
+                    mask[stronger_preds_prob > 0.5] = 1 #thresholding
+                    log_images(train_samples, mask.unsqueeze(1), gt_samples, epoch , "Train_dice")
+                
+                # if img == 1:
+                #     break
+            
+            # embed()
+            avg_train_dice = np.mean(avg_train_dice)
+            
+        # embed()
+        print('----------------------------------------------------------------------')
+        print('                    Val Dice Calculation')
+        print('----------------------------------------------------------------------')
+
+        with torch.no_grad():
+            model.eval()
+            avg_val_dice = []
+            total_loss = 0
+            for img in range(len(dataset_val)):  # looping over all 3D files
+
+                val_samples, gt_samples, voxel = dataset_val[img]  # Get the ith image, label, and voxel 
+                stronger_predictions = []
+     
+                for slice_id, img_slice in enumerate(val_samples): # looping over single img             
+                    img_slice = img_slice.unsqueeze(0)
+                    img_slice = img_slice.to(device)
+                    stronger_pred = model(img_slice)
+                    stronger_predictions.append(stronger_pred.squeeze().detach().cpu())
+
+                stronger_preds = torch.stack(stronger_predictions, dim= 0)
+
+                # embed()
+                stronger_predictions.clear()
+                stronger_preds_prob = torch.sigmoid(stronger_preds)
+                # loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
+        
+                total_loss += loss.item()
+
+                # val_dice = sdice(stronger_preds_prob.numpy() > 0.5,
+                #                 torch.sigmoid(preds).numpy() > 0.5,
+                #                 voxel[img])
+                val_dice = sdice(gt_samples.squeeze().numpy()>0,
+                                stronger_preds_prob.numpy() > 0.5,
+                                voxel[img])
+
+                avg_val_dice.append(val_dice)
+
+                if epoch % 10 == 0 and wandb_mode == "online":
+                    mask = torch.zeros(size=stronger_preds_prob.shape) 
+                    mask[stronger_preds_prob > 0.5] = 1 #thresholding
+                    log_images(train_samples, mask.unsqueeze(1), gt_samples, epoch , "val_dice")
+
+                # if img == 1:
+                #     break
+
+            val_loss_total_avg = total_loss / len(dataset_val)
+            # embed()
+            avg_val_dice  =  np.mean(avg_val_dice)
+            # embed()
+            # print('avg val dice', avg_val_dice)
+            # dice_diff = avg_val_dice - train_dice_total_avg_old
+            # print('avg train dice_diff', dice_diff)
+            # train_dice_total_avg_old = avg_val_dice
+
+
+            if avg_val_dice > train_dice_total_avg_old:   ### added 
+                train_dice_total_avg_old = avg_val_dice
+                print("best_acc- after updation", train_dice_total_avg_old)
+                save_model(model, config, suffix, folder_time)
+                patience = 0
+                print(f'patience: {patience}')
+   
             else:
-                loss = -torch.mean(F.log_softmax(preds, dim=1)*F.softmax(stronger_preds, dim=1))         
-                dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
+                patience +=1
+                print(f'patience: {patience}')
 
-            train_dice_total += dice.item()
-            num_steps += 1
-        train_dice_total_avg = train_dice_total / num_steps
+            if patience > 5 and avg_val_dice < train_dice_total_avg_old:
+                print("early stopping")
+                break
+            
+            print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss, {val_loss_total_avg}, Valid DC: {avg_val_dice}')
 
-        print('avg train dice', train_dice_total_avg)
-        dice_diff = train_dice_total_avg - train_dice_total_avg_old
-        print('avg train dice_diff', dice_diff)
-        train_dice_total_avg_old = train_dice_total_avg
+            
+            wandb_run.log({
+                                "Epoch": epoch,
+                                "Train Loss": train_loss_total_avg,
+                                "Train DC":   avg_train_dice,
+                                "Valid Loss": val_loss_total_avg,
+                                "Valid DC":   avg_val_dice
 
-        writer.add_scalars('loss', {
-            'train_loss': train_loss_total_avg}, epoch)
-        writer.add_scalars('dice_pgt', {
-            'dice_pgta': train_dice_total_avg}, epoch)
+                            })
+            
+            # if epoch == 1:
+            #     break
 
-        end_time = time.time()
-        total_time = end_time - start_time
-        tqdm.write("Epoch {} took {:.2f} seconds.".format(epoch, total_time))
+            # if abs(dice_diff) < stopping_thresh:
+            #     print("----small dice difference...will stop refinement")
+            #     break
 
-        if epoch % 2 == 0:
-            torch.save(model.state_dict(), save_model_to)
+            
+            
+            
+        
 
-        if abs(dice_diff) < stopping_thresh:
-            print("----small dice difference...will stop refinement")
-            break
-
-    torch.save(model.state_dict(), save_model_to)
+    # save_model(model, config, suffix, folder_time)
+   
+  
 
     return model

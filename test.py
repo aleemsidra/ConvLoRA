@@ -33,12 +33,10 @@ def test(dataset, config, suffix, wandb_mode, device=torch.device("cuda:0"), ini
     batch_size = config.batch_size
     folder_time = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
     n_channels_out = config.n_channels_out
-    
     save_config(config, suffix,folder_time)
-    wandb_run = wandb.init( project='UDAS', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
+    wandb_run = wandb.init( project='domain_adaptation', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16) 
     model.load_state_dict(torch.load(config.checkpoint))
-    
     if torch.cuda.is_available():
       model = model.cuda()
 
@@ -109,6 +107,7 @@ def test(dataset, config, suffix, wandb_mode, device=torch.device("cuda:0"), ini
         return final_avg_dice, total_loss_avg
 
             
+
 
 
 

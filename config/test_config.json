@@ -1,12 +1,11 @@
 
 
 {
-    "model_net_name" : "unet", 
+    "model_net_name" : "test", 
     "dataset" : "CC359",
-    "site" : 6,
     "fold" : -1,
 
-    "num_epochs": 50,
+    "num_epochs": 100,
     "batch_size" : 32,
     "n_channels_out" : 1,
 
@@ -21,7 +20,7 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_udas_setting_epochs:100_2023-06-02_06-21-22_PM/dc_model.pth"
-  
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/refine_ge_15_seed_42_manual_slicing_epoch:20_batch_32_2023-06-22_12-54-40_PM/dc_model.pth"
+    
   }
   
