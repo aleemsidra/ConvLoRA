@@ -29,6 +29,7 @@ class CalgaryCampinasDataset(Dataset):
         # self.site = site  # adddeddd
         self.data_path = config.data_path
         self.source = config.source
+        embed()
 
 
         if self.site == 1:
@@ -113,9 +114,9 @@ class CalgaryCampinasDataset(Dataset):
         labels = []
         self.voxel_dim = [] 
      
-        # images_path = os.path.join(data_path, 'Original', self.folder)
-        # print("images_path", images_path )
-
+        images_path = os.path.join(data_path, 'Original', self.folder)
+        print("images_path", images_path )
+        # embed()
         if self.source and self.train:
 
             self.images_path = os.path.join(data_path, 'Original', self.folder, "train")
@@ -133,7 +134,7 @@ class CalgaryCampinasDataset(Dataset):
             self.images_path = os.path.join(data_path, 'Original', self.folder)
             print("image_path ", self.images_path)
         
-
+  
         files = np.array(sorted(os.listdir(self.images_path)))
         # print("length ", len(files))
         # embed()
@@ -440,8 +441,6 @@ class cc359_refine(Dataset):
 
 
 
-
-
 class cc359_refine_volume(Dataset):
     def __init__(self, config, train = True, rotate=True, scale=True ):
         self.rotate = rotate
@@ -452,6 +451,7 @@ class cc359_refine_volume(Dataset):
         self.site = config.site
         self.data_path = config.data_path
         self.source = config.source
+        self.refine = config.refine
 
         if self.site == 1:
             self.folder = 'GE_15'
@@ -490,7 +490,7 @@ class cc359_refine_volume(Dataset):
         
 
         # if self.stage == "refine" and not self.train:
-        elif self.source == "True" and not self.train:
+        elif self.refine == "True" and not self.train:
             self.images_path = os.path.join(data_path, 'Original', self.folder, "val.csv")
             print("val_path ",self.images_path)
 
@@ -501,7 +501,7 @@ class cc359_refine_volume(Dataset):
             print("test_path ", self.images_path)
         
         self.volume_files = pd.read_csv(self.images_path).values.ravel().tolist()
-    
+        # embed()
         # Get a list of all the volume data files in the root directory        
         # self.volume_files = np.array(sorted([os.path.join(self.images_path, f) for f in os.listdir(self.images_path) if f.endswith('.nii.gz')]))
 
@@ -612,7 +612,7 @@ class cc359_3d_volume(Dataset):
         self.site = site
         self.data_path = config.data_path
         self.source = config.source
-
+        # embed()
         if self.site == 1:
             self.folder = 'GE_15'
             self.range = (60,195)

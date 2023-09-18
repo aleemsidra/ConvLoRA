@@ -2,7 +2,7 @@ import os
 import json
 import torch
 from models import UNet2D
-def save_model( model, config, suffix, folder_time):
+def save_model( model, config, suffix, folder_time, lora= False):
         """
         implement the logic of saving model
         """
@@ -25,8 +25,11 @@ def save_model( model, config, suffix, folder_time):
         #save_name = os.path.join(save_path,self.config['save_name'])
         
         save_name = os.path.join(save_dir, config.save_name)
-
-        torch.save(model.state_dict(), save_name)
+        if not lora:
+            torch.save(model.state_dict(), save_name)
+        else:
+            torch.save(lora.lora_state_dict(model, bias='lora_only'), save_name)
+            # torch.save(lora.lora_state_dict(model, bias='all'), save_name)
 
 
 def load_model(config, model ):
