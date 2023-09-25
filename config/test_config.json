@@ -5,7 +5,7 @@
     "dataset" : "CC359",
     "fold" : -1,
 
-    "num_epochs": 100,
+    "num_epochs": 5,
     "batch_size" : 32,
     "n_channels_out" : 1,
 
@@ -13,14 +13,14 @@
   
 
     "source":    "False", 
+    "refine" : "False",
   
     "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/CC359/Reconstructed/",
-   
+       
     "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/refine_ge_15_seed_42_manual_slicing_epoch:20_batch_32_2023-06-22_12-54-40_PM/dc_model.pth"
-    
+    "lora_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/refine_lora_on_init_path_seed:42_target:philips_15_2023-09-25_01-14-43_PM/dc_model.pth",
+    "base_model_checkpoint" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_seed_42_manual_slicing_epoch:100_batch_32_2023-06-12_11-56-58_PM/dc_model.pth"
   }
-  

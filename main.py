@@ -88,30 +88,36 @@ def main(args, now, suffix, wandb_mode):
              
         else:
             print("Step: Refinement")
-
+      
             if args.data == "cc359":
+          
                 train_data = cc359_refine(config, args.site)
                 train_dice_data = cc359_3d_volume(config, args.site)
                 val_data = cc359_3d_volume(config, args.site, train= False)
                 # embed()
              
-            if args.data == "mms":
+            # if args.data == "mms":
+            else:
                 train_data = MMSDataset(config, args.site, train = True)
                 train_dice_data = mms_3d_volume(config, args.site)
                 val_data = mms_3d_volume(config, args.site, train= False)
                 print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
             # embed()
 
-            # udas refine
-            # train_target(train_data, train_dice_data, val_data, config, 
-            #             suffix, wandb_mode,  add_lora=True)
+            # if args.step == "refine":
+            #     print("refine")
+            #     embed()
+            print("udas refine")
+            train_target(train_data, train_dice_data, val_data, config, 
+                            suffix, wandb_mode,  add_lora=True)
+            # else:
+            # print("lora refine")
+            # # # embed()
+            # mix_labels(train_data, train_dice_data, val_data, config, 
+            #             suffix, wandb_mode,   args.final_alpha, add_lora=True)
+                            
 
-            mix_labels(train_data, train_dice_data, val_data, config, 
-                        suffix, wandb_mode,  add_lora=True)
-                        
-
-            # lora refine
-            # train_model(train_data, train_dice_data, val_data, config, suffix, wandb_mode, add_lora=True)
+   
 
     else:
         print('----------------------------------------------------------------------')
@@ -142,10 +148,11 @@ if __name__ == '__main__':
     parser.add_argument('--step', type= str, required= True, help="choose stage of doamina daptation")
     parser.add_argument('--test', type = None, help = "to turn test mode on")
     parser.add_argument('--seed', type = int, required = True, help = "random seed")
-    parser.add_argument('--alpha', type = int, help = "controls mixed ratio of psuedo labels")
+    # parser.add_argument('--alpha', type = int, help = "controls mixed ratio of psuedo labels")
+    parser.add_argument('--final_alpha', type = float,  required = True, help = "final alpha value")
     parser.add_argument('--site', action='store', required = True, help = "can be int or str")
     parser.add_argument('--data', type = str, required = True, help = "specify the name of dataset")
-    
+    parser.add_argument('--checkpoint', type = str, help = "name of checkpoint")
     args = parser.parse_args()
     now = time.strftime('%Y-%m-%d | %H:%M:%S', time.localtime(time.time()))
 

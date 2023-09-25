@@ -39,12 +39,18 @@ def test(dataset, config, suffix, wandb_mode, device=torch.device("cuda:0"), ini
     save_config(config, suffix,folder_time)
     wandb_run = wandb.init( project='domain_adaptation', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16) 
-    print("original model loaded")
-    # embed()
+    print("model structure loaded")
+    embed()
+ 
     model = replace_layers(model)
-    # embed()
-    model.load_state_dict(torch.load(config.checkpoint), strict= False)
-    print("lora model loaded")
+    print("layers replaced")
+
+    model.load_state_dict(torch.load(config.lora_checkpoint), strict= False)
+    print("lora weights")
+
+    model.load_state_dict(torch.load(config.base_model_checkpoint), strict= False)
+    print("lora +base model weights")
+
     # embed()
     if torch.cuda.is_available():
       model = model.cuda()
@@ -61,20 +67,7 @@ def test(dataset, config, suffix, wandb_mode, device=torch.device("cuda:0"), ini
         avg_dice_all = []
         total_loss = 0.0
         
-        # indices = list(range(len(dataset)))  # create a list of indices for the dataset
-        
-        # step_size = len(indices) // min(6, len(indices))  # calculate the step size for iterating over indices
-        # end_ = step_size * min(6, len(indices))  # calculate the end index for iterating over indices
-
-        # for i in range(0, end_, step_size):  # looping over all folds
-        #     # Select 10 random images from the dataset, starting from index i
-        #     indices_chunk = indices[i:i+step_size]
-        #     indices_subset = random.sample(indices_chunk, min(len(indices_chunk), 10))
-        #     print("indices", indices_subset)
-                    
         avg_dice = []
-        #     for idx in indices_subset:
-        # for idx in range(dataset):
         print(f'dataset len: {len(dataset)}')
         for idx in range(len(dataset)):
                 # Get the ith image, label, and voxel
@@ -85,6 +78,7 @@ def test(dataset, config, suffix, wandb_mode, device=torch.device("cuda:0"), ini
                     img_slice = img_slice.unsqueeze(0)
                     img_slice = img_slice.to(device)
                     preds = model(img_slice)
+                    # embed()
                     slices.append(preds.squeeze().detach().cpu())
 
                 segmented_volume = torch.stack(slices, axis=0)
@@ -106,20 +100,15 @@ def test(dataset, config, suffix, wandb_mode, device=torch.device("cuda:0"), ini
                 print("logging segmented images")
                 mask = torch.zeros(size=segmented_volume.shape) 
                 mask[torch.sigmoid(segmented_volume) > 0.5] = 1
-                # mask = torch.zeros(size=segmented_volume.shape) 
                
-                log_images(input_samples, mask.unsqueeze(1), gt_samples, 100 , "Test", idx) 
-            
-           
+                log_images(input_samples, mask.unsqueeze(1), gt_samples, 100 , "Test", idx)            
                 # log_images(input_samples, torch.argmax(segmented_volume, dim=1).cpu().numpy(), torch.argmax(gt_samples, dim=1), 50, "Test_DC", idx )
                
-                # embed()
-            
-            # avg_dice_all.append(np.mean(avg_dice))
-        # embed()
+
+
         total_loss_avg = total_loss / len(dataset)
         final_avg_dice = np.mean(avg_dice)
-        # final_avg_dice = np.mean(avg_dice_all)
+   
 
         return final_avg_dice, total_loss_avg
 

@@ -29,24 +29,28 @@ from save_model import save_model
 from LoRA.loralib.utils import mark_only_lora_as_trainable
 
 
-def mix_labels(dataset_train, dataset_train_dice, dataset_val, config, suffix, wandb_mode, add_lora = False, initial_lr=0.001, level=0, device=torch.device("cuda:0")):
+def mix_labels(dataset_train, dataset_train_dice, dataset_val, config, suffix, wandb_mode, final_alpha, add_lora = False, initial_lr=0.001, level=0, device=torch.device("cuda:0")):
     num_epochs = config.num_epochs
     batch_size = config.batch_size
     alpha = config.alpha
     folder_time = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
     n_channels_out = config.n_channels_out
 
+
+    # embed()
     wandb_run = wandb.init( project='domain_adaptation', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     train_loader = DataLoader(dataset_train, batch_size=batch_size,
                               shuffle=True, num_workers=0, drop_last=True)
 
     # Base Model
-    model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16) 
+    model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)  #mms dataset: input chanels set tp 4
     model.load_state_dict(torch.load(config.checkpoint)) 
+    print(f'checkpoint: {config.checkpoint}')
+    # embed()
     model.cuda(device)
     model.eval()
-    # print("original model")
-    # embed()
+    print("original model")
+    embed()
 
     # LoRA Model
     for p in model.parameters():
@@ -58,13 +62,16 @@ def mix_labels(dataset_train, dataset_train_dice, dataset_val, config, suffix, w
 
     elif level ==0 and add_lora:
         # Clone the base model
+        print("cloning")
         lora_model = copy.deepcopy(model)
         lora_model = replace_layers(lora_model)
+        print("layer replaced")
+        embed()
         lora_model.load_state_dict(torch.load(config.checkpoint), strict = False) 
         mark_only_lora_as_trainable(lora_model,bias='lora_only')
         lora_model.cuda(device)
     print("lora_model")    
-    # embed()
+    embed()
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
 
     # Initial Dice Calculation
@@ -105,11 +112,24 @@ def mix_labels(dataset_train, dataset_train_dice, dataset_val, config, suffix, w
     print('----------------------------------------------------------------------')
     print('                    Train Loss Calculation')
     print('----------------------------------------------------------------------')
-    for epoch in range(1, num_epochs + 1):
+    
+    if alpha == "linear_decay":
+        print ("linear decay")
+        initial_alpha = 1.0
+        final_alpha = final_alpha
         
+        alpha = np.linspace(initial_alpha, final_alpha, num_epochs)
+        
+        # alpha = [initial_alpha - (initial_alpha - final_alpha) * (epoch / (num_epochs - 1)) for epoch in range(num_epochs)]
+        
+    else:
+        print ("decay per epoch")
         alpha -= alpha / num_epochs
-        print(f"epoch: {epoch}, alpha: {alpha}")
-        
+    
+    print(f"alpha: {alpha}")
+    # embed()
+    for epoch in range(1, num_epochs + 1):
+
         model.eval()
         lora_model.train()
         train_loss_total = 0.0
@@ -123,135 +143,159 @@ def mix_labels(dataset_train, dataset_train_dice, dataset_val, config, suffix, w
             lora_preds = lora_model(var_input)  
             # embed()
             # gt_samples = alpha * model_preds + (1 - alpha) * lora_preds  # ground truth
-            gt_samples = alpha * torch.sigmoid(model_preds) + (1 - alpha) * torch.sigmoid(lora_preds) 
-         
-            loss = weighted_cross_entropy_with_logits(lora_preds, gt_samples)
-    
+            
+            # gt_samples = alpha[epoch-1] * torch.sigmoid(model_preds) + (1 - alpha[epoch-1]) * torch.sigmoid(lora_preds) 
+            gt_samples = alpha[epoch-1] *model_preds + (1 - alpha[epoch-1]) * lora_preds
+            # loss = weighted_cross_entropy_with_logits(lora_preds, gt_samples)
+            loss = weighted_cross_entropy_with_logits(lora_preds, torch.sigmoid(gt_samples))
+            # if epoch != 1:
+            #     print("train loss")
+            #     # embed()
             train_loss_total += loss.item()
             optimizer.zero_grad()
-            loss.backward()
+            loss.backward()  
             optimizer.step()
+      
             num_steps += 1
       
 
         train_loss_total_avg = train_loss_total / num_steps
+        embed()
         num_steps = 0
         print('avg train loss', train_loss_total_avg)
-  
 
-        print('----------------------------------------------------------------------')
-        print('                    Train Dice Calculation')
-        print('----------------------------------------------------------------------')
-        with torch.no_grad():
-            
-            model.eval()
-            lora_model.eval()
-            avg_train_dice = []
-            for img in range(len(dataset_train_dice)):  # looping over all 3D files
-    
-                train_samples, _ , voxel = dataset_train_dice[img]  # Get the ith image, label, and voxel    
-                train_predictions = []
-                train_lora_predictions = []
-                
-            
-                for _, img_slice in enumerate(train_samples): # looping over single img    
-                                
-                    img_slice = img_slice.unsqueeze(0)
-                    img_slice = img_slice.to(device)
-
-                    model_preds = model(img_slice)
-                    lora_preds = lora_model(img_slice)
-
-                    train_predictions.append(model_preds.squeeze().detach().cpu())
-                    train_lora_predictions.append(lora_preds.squeeze().detach().cpu())
-                    
-                    # del stronger_pred 
-                
-                preds = torch.stack(train_predictions, dim= 0)
-                lora_preds = torch.stack(train_lora_predictions, dim= 0)
-                train_predictions.clear()
-                train_lora_predictions.clear()
-                
-                # stronger_preds_prob = torch.sigmoid(stronger_preds)
-
-                gt_samples = alpha * preds + (1 - alpha) * lora_preds
-
-
-                if n_channels_out == 1:
-                    train_dice = sdice(gt_samples.numpy() > 0.5,
-                                       torch.sigmoid(lora_preds).numpy() > 0.5,
-                                       voxel[img])
-            
-                avg_train_dice.append(train_dice)
-
-     
-            avg_train_dice = np.mean(avg_train_dice)
-            
         # embed()
-        print('----------------------------------------------------------------------')
-        print('                    Val Dice Calculation')
-        print('----------------------------------------------------------------------')
 
-        with torch.no_grad():
-            model.eval()
-            lora_model.eval()
-            avg_val_dice = []
-            total_loss = 0
-
-            for img in range(len(dataset_val)):  # looping over all 3D files
-
-                val_samples, _ , voxel = dataset_val[img]  # Get the ith image, label, and voxel   # Get the ith image, label, and voxel 
-                val_model_predictions = []
-                val_lora_predictions = []
-                slices = []
-                for slice_id, img_slice in enumerate(val_samples): # looping over single img    
-                            
-                    img_slice = img_slice.unsqueeze(0)
-                    img_slice = img_slice.to(device)
-
-                    model_pred = model(img_slice)
-                    lora_pred = lora_model(img_slice)
-
-                    val_model_predictions.append(model_pred.squeeze().detach().cpu())
-                    val_lora_predictions.append(lora_pred.squeeze().detach().cpu())
-
-                preds = torch.stack(val_model_predictions, dim= 0)
-                lora_preds = torch.stack(val_lora_predictions, dim= 0)
-                val_model_predictions.clear()
-                val_lora_predictions.clear()
-
-                # gt_samples = alpha * preds + (1 - alpha) * lora_preds
-                gt_samples = alpha * torch.sigmoid(preds) + (1 - alpha) * torch.sigmoid(lora_preds) 
-                loss = weighted_cross_entropy_with_logits(lora_preds, gt_samples)
-                total_loss += loss.item()
-
-                val_dice = sdice(gt_samples.numpy() > 0.5,
-                                       torch.sigmoid(lora_preds).numpy() > 0.5,
-                                       voxel[img])
+        # print('----------------------------------------------------------------------')
+        # print('                    Train Dice Calculation')
+        # print('----------------------------------------------------------------------')
+        # with torch.no_grad():
             
-                avg_val_dice.append(val_dice)
+        #     model.eval()
+        #     lora_model.eval()
+        #     avg_train_dice = []
+        #     for img in range(len(dataset_train_dice)):  # looping over all 3D files
+    
+        #         train_samples, _ , voxel = dataset_train_dice[img]  # Get the ith image, label, and voxel    
+        #         train_predictions = []
+        #         train_lora_predictions = []
+                
+            
+        #         for _, img_slice in enumerate(train_samples): # looping over single img    
+                                
+        #             img_slice = img_slice.unsqueeze(0)
+        #             img_slice = img_slice.to(device)
+
+        #             model_preds = model(img_slice)
+        #             lora_preds = lora_model(img_slice)
+
+        #             train_predictions.append(model_preds.squeeze().detach().cpu())
+        #             train_lora_predictions.append(lora_preds.squeeze().detach().cpu())
+                    
+        #             # del stronger_pred 
+                
+        #         preds = torch.stack(train_predictions, dim= 0)
+        #         lora_preds = torch.stack(train_lora_predictions, dim= 0)
+                
+        #         train_predictions.clear()
+        #         train_lora_predictions.clear()
+                
+        #         # stronger_preds_prob = torch.sigmoid(stronger_preds)
+
+        #         # gt_samples = alpha * preds + (1 - alpha) * lora_preds
+        #         # gt_samples = alpha[epoch-1] * torch.sigmoid(preds) + (1 - alpha[epoch-1]) * torch.sigmoid(lora_preds)
+        #         gt_samples = alpha[epoch-1] *preds + (1 - alpha[epoch-1]) * lora_preds
+        #         # if epoch != 1:
+        #         #     print("train_dice")
+        #         #     embed()
+        #         if n_channels_out == 1:
+        #             train_dice = sdice(gt_samples.numpy() > 0.5,
+        #                                torch.sigmoid(lora_preds).numpy() > 0.5,
+        #                                voxel[img])
+            
+        #         avg_train_dice.append(train_dice)
 
      
-            avg_val_dice = np.mean(avg_val_dice)
+        #     avg_train_dice = np.mean(avg_train_dice)
+            
+        # # embed()
+        # print('----------------------------------------------------------------------')
+        # print('                    Val Dice Calculation')
+        # print('----------------------------------------------------------------------')
 
-            val_loss_total_avg = total_loss / len(dataset_val)
+        # with torch.no_grad():
+        #     model.eval()
+        #     lora_model.eval()
+        #     avg_val_dice = []
+        #     total_loss = 0
 
-            if avg_val_dice > train_dice_total_avg_old:   
-                train_dice_total_avg_old = avg_val_dice
-                print("best_acc- after updation", train_dice_total_avg_old)
-                save_model(lora_model, config, suffix, folder_time)
+        #     for img in range(len(dataset_val)):  # looping over all 3D files
+
+        #         val_samples, _ , voxel = dataset_val[img]  # Get the ith image, label, and voxel   # Get the ith image, label, and voxel 
+        #         val_model_predictions = []
+        #         val_lora_predictions = []
+        #         slices = []
+        #         for slice_id, img_slice in enumerate(val_samples): # looping over single img    
+                            
+        #             img_slice = img_slice.unsqueeze(0)
+        #             img_slice = img_slice.to(device)
+
+        #             model_pred = model(img_slice)
+        #             lora_pred = lora_model(img_slice)
+
+        #             val_model_predictions.append(model_pred.squeeze().detach().cpu())
+        #             val_lora_predictions.append(lora_pred.squeeze().detach().cpu())
+
+        #         preds = torch.stack(val_model_predictions, dim= 0)
+        #         lora_preds = torch.stack(val_lora_predictions, dim= 0)
+        #         val_model_predictions.clear()
+        #         val_lora_predictions.clear()
+        #         # print("val lora preds")
+        #         # embed()
+        #         # gt_samples = alpha * preds + (1 - alpha) * lora_preds
+        #         # gt_samples = alpha * torch.sigmoid(preds) + (1 - alpha) * torch.sigmoid(lora_preds) 
+        #         # embed()
+        #         # gt_samples = alpha[epoch-1] * torch.sigmoid(preds) + (1 - alpha[epoch-1]) * torch.sigmoid(lora_preds)
+        #         gt_samples = alpha[epoch-1] *preds + (1 - alpha[epoch-1]) * lora_preds
+
+                
+        #         # loss = weighted_cross_entropy_with_logits(lora_preds, gt_samples)
+        #         loss = weighted_cross_entropy_with_logits(lora_preds, torch.sigmoid(gt_samples))
+        #         # if epoch != 1:
+        #         #     print("val loss")
+        #         #     embed()
+            
+        #         total_loss += loss.item()
+
+        #         val_dice = sdice(gt_samples.numpy() > 0.5,
+        #                                torch.sigmoid(lora_preds).numpy() > 0.5,
+        #                                voxel[img])
+            
+        #         avg_val_dice.append(val_dice)
+
+     
+        #     avg_val_dice = np.mean(avg_val_dice)
+
+        #     val_loss_total_avg = total_loss / len(dataset_val)
+
+        #     if avg_val_dice > train_dice_total_avg_old:   
+        #         train_dice_total_avg_old = avg_val_dice
+        #         print("best_acc- after updation", train_dice_total_avg_old)
+        #         save_model(lora_model, config, suffix, folder_time)
 
 
-            print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss, {val_loss_total_avg}, Valid DC: {avg_val_dice}')
+       
+        #     print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss: {val_loss_total_avg}, Valid DC: {avg_val_dice}, alpha: {alpha[epoch-1]}')
 
             
-            wandb_run.log({
-                                "Epoch": epoch,
-                                "Train Loss": train_loss_total_avg,
-                                "Train DC":   avg_train_dice,
-                                "Valid Loss": val_loss_total_avg,
-                                "Valid DC":   avg_val_dice
+        #     wandb_run.log({
+        #                         "Epoch": epoch,
+        #                         "Train Loss": train_loss_total_avg,
+        #                         "Train DC":   avg_train_dice,
+        #                         "Valid Loss": val_loss_total_avg,
+        #                         "Valid DC":   avg_val_dice, 
+        #                         "Alpha": alpha[epoch-1]
 
-                            })
+        #                     })
         
     return model

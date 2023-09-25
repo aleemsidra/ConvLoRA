@@ -217,10 +217,10 @@ def replace_layers(model):
         
     
         for name, sub_module in model.named_children():
-            # desired_submodules = ['init_path', "down1"]
+            desired_submodules = ['init_path'] #, "down1"]
             
-            desired_submodules = ['init_path',"shortcut0", "down1","shortcut1" , "down2"
-                                    , "shortcut2", "down3", "up3" , "up2" ,"up1", "out_path"]
+            # desired_submodules = ['init_path',"shortcut0", "down1","shortcut1" , "down2"
+            #                         , "shortcut2", "down3", "up3" , "up2" ,"up1", "out_path"]
             # print("sub", sub_module)
             if name in desired_submodules:
                

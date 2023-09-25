@@ -339,11 +339,8 @@ class Conv2d(nn.Conv2d, LoRALayer):
             nn.init.zeros_(self.lora_B)
 
     def train(self, mode: bool = True): # True for train and False for eval
-        # print("in train")
-        # embed()
-      
+ 
         nn.Conv2d.train(self, mode)
-
         if mode:
             # print("in mode")
             # embed()
@@ -358,6 +355,7 @@ class Conv2d(nn.Conv2d, LoRALayer):
             # embed()
             if self.merge_weights and not self.merged:
                 # print("merging")
+                # embed()
                 # Merge the weights and mark it
                 self.weight.data += (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
                 self.merged = True
