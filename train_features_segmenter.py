@@ -52,7 +52,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
     unet_model.eval()
     CE_loss = torch.nn.CrossEntropyLoss()
 
-    # embed()
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
 
     for epoch in range(1, num_epochs + 1):
@@ -72,11 +71,8 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
             var_gt = gt_samples.cuda(device, non_blocking=True)
 
             if level == 0:
-           
                 layer_activations = unet_model.init_path(var_input)
-                preds = model(layer_activations)
-                # embed()
-                
+                preds = model(layer_activations)                
              
             else:  # level = 1
      
@@ -85,12 +81,9 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                 logits_ = model(layer_activations_1)
                 preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
 
-            
-            # embed()
             if n_channels_out == 1:
                 loss = weighted_cross_entropy_with_logits(preds, var_gt)
             else:
-                # embed()
                 loss = CE_loss(preds, torch.argmax(var_gt, dim=1))      
                      
             train_loss_total += loss.item()
@@ -100,9 +93,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
             optimizer.step()
             num_steps += 1
 
-            
-            # if i == 0:
-            #     embed()
 
             if epoch % 10 == 0  and wandb_mode == "online":
             # if  wandb_mode == "online" and ( epoch % 2 == 0 or epoch ==5):
@@ -110,11 +100,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                 # mask[preds > 0.5] = 1
                 # log_images(input_samples, mask, gt_samples, epoch, "Train") 
                 log_images(input_samples, torch.argmax(preds, dim=1).cpu().numpy(), torch.argmax(var_gt, dim=1).cpu().numpy(), epoch, "Train_Slice_DC",i ) 
-
-            # if i == 2:
-            #     break
-        
-    
 
         train_loss_total_avg = train_loss_total / num_steps
 
@@ -148,13 +133,10 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                         logits_ = model(layer_activations_1)
                         preds = F.interpolate(logits_, scale_factor=2, mode='bilinear')
 
-         
                     slices.append(preds.squeeze().detach().cpu())
         
                 segmented_volume = torch.stack(slices, dim=0)
-                # embed()
                 slices.clear()
-            
 
                 if n_channels_out == 1:
                     train_dice = sdice(gt_samples.squeeze().numpy()>0,
@@ -164,9 +146,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                 else:
                     train_dice =  dice_score(torch.argmax(segmented_volume, dim=1) ,torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
 
-                
-                # if img == 0:
-                #     embed()
                 avg_train_dice.append(train_dice)
 
                 if epoch % 10 == 0  and wandb_mode == "online":
@@ -178,10 +157,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                     # log_images(train_samples, mask.unsqueeze(1), gt_samples, epoch , "Train_dice")
                     log_images(train_samples, torch.argmax(segmented_volume, dim=1).cpu().numpy(), torch.argmax(gt_samples, dim=1), epoch, "Train_DC", img) 
 
-                # if img == 1:
-                #     break
-            
-            # embed()
             avg_train_dice = np.mean(avg_train_dice)
 
 
@@ -220,8 +195,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
 
                     slices.append(preds.squeeze().detach().cpu())
                 val_segmented_volume = torch.stack(slices, dim=0)
-                # if img ==0:
-                #     embed()
                 slices.clear()
                        
                 if n_channels_out == 1:
@@ -244,12 +217,6 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                     # log_images(input_samples, mask.unsqueeze(1), gt_samples, epoch , "Val_dice", img) 
                     log_images(input_samples, torch.argmax(val_segmented_volume, dim=1).cpu().numpy(), torch.argmax(gt_samples, dim=1), epoch, "Val_dice", img) 
 
-                
-                # if img == 1:
-                #     break
-             
-            
-            # embed()
             val_loss_total_avg = total_loss / len(dataset_val)
             avg_val_dice  =  np.mean(avg_val_dice)
             print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss, {val_loss_total_avg}, Valid DC: {avg_val_dice}')
@@ -269,8 +236,5 @@ def train(dataset_train, dataset_train_dice, dataset_val,  config, suffix, wandb
                             "Valid DC":   avg_val_dice
 
                         })
-        
-        # # if epoch == 1:
-        # #     break
 
     return model

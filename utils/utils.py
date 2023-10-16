@@ -1,8 +1,16 @@
 # coding=utf-8
 import os
+import numpy as np
 import json
 import wandb
+from PIL import Image
 import torchvision.utils as vutils
+import matplotlib.pyplot as plt
+from matplotlib.colors import ListedColormap
+from IPython import embed
+import torchvision
+
+
 
 from easydict import EasyDict as edict
 
@@ -142,3 +150,67 @@ def log_images(input, preds, gt, epoch, stage, img_id = ""):
     
     wandb.log({f"{stage}_Ground truth_Epoch: {epoch}_{img_id}": wandb.Image(grid_img)}, step=wandb.run.step)
 
+
+
+# def log_slices(image, epoch, stage, img_id ):
+#     colors = ['purple', 'red', 'green', 'blue']
+#     cmap = ListedColormap(colors)
+    
+#    # Create a grid of tensors for visualization
+#     grid_tensors = []
+#     for slice_idx in range(image.shape[0]):
+#         # Get the slice for the current index
+#         slice_img = image[slice_idx]
+        
+#         # Apply the colormap to the slice image
+#         colored_slice_img = cmap(slice_img)
+        
+#         # Convert the colored slice image to uint8
+#         colored_slice_img = (colored_slice_img * 255).astype(np.uint8)
+        
+#         # Convert the colored slice image to a PIL Image
+#         pil_img = Image.fromarray(colored_slice_img)
+        
+#         # Convert the PIL Image to a tensor
+#         tensor_img = torchvision.transforms.ToTensor()(pil_img)
+        
+#         # Append the tensor image to the grid tensors list
+#         grid_tensors.append(tensor_img)
+
+#     # Create a grid of images using torchvision.utils.make_grid
+#     grid_img = torchvision.utils.make_grid(grid_tensors)
+
+#     # Convert the grid image tensor to a PIL Image
+#     pil_grid_img = torchvision.transforms.ToPILImage()(grid_img)
+
+#     # Convert the PIL Image to uint8
+#     pil_grid_img = pil_grid_img.convert("RGB")
+
+#     return pil_grid_img
+
+
+
+
+# def log_images(input, preds, gt, epoch, stage, img_id = ""):
+#     # embed()
+#     grid_img = vutils.make_grid(input, 
+#                                 normalize=False, scale_each=False)
+            
+#     wandb.log({f"{stage}_Input images_Epoch: {epoch}_{img_id}": wandb.Image(grid_img)},step=wandb.run.step)
+
+#     pil_grid_img = log_slices(preds, epoch, stage, img_id )
+#     wandb.log({f"{stage}_predictions_Epoch: {epoch}_{img_id}": wandb.Image(pil_grid_img)}, step=wandb.run.step)
+
+#     pil_grid_img = log_slices(gt, epoch, stage, img_id )
+#     wandb.log({f"{stage}_Ground truth_Epoch: {epoch}_{img_id}": wandb.Image(pil_grid_img)}, step=wandb.run.step)
+    # embed()
+
+    
+
+
+        # Log the grid image to WandB
+    # wandb.log({"var_gt_grid": wandb.Image(pil_grid_img, caption="Variable Ground Truth Grid")})
+    
+    # wandb.log({"var_gt_grid": wandb.Image(pil_grid_img, caption=f"")})
+
+    # wandb.log({f"{epoch}_Ground truth_Epoch: ": wandb.Image(pil_grid_img)}, step=wandb.run.step)

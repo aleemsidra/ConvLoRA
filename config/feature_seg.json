@@ -1,25 +1,28 @@
 {
-    "model_net_name" : "feature_seg", 
-    "dataset" : "CC359",
-    "site" : 2,
+    "model_net_name" : "head", 
+
+
     "fold" : -1,
 
     "num_epochs":  50,
-    "batch_size" : 32,
-    "n_channels_out" : 1,
+    "lr":  0.001,
+    "batch_size" : 20,
+    "n_channels_out" : 4,
 
     "save_name" : "dc_model.pth",
   
 
     "source":    "True", 
+    "refine" : "False",
+
   
-    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/CC359/Reconstructed/",
+    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/OpenDataset/",
    
     "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/baseline_previous_commit_2023-06-08_10-46-10_PM/dc_model.pth"
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_mms_seed_42_epoch:50_batch:20_level:1_2023-07-24_03-59-05_PM/dc_model.pth"
   
   }
   

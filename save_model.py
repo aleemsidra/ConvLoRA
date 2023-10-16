@@ -4,7 +4,8 @@ import torch
 from models import UNet2D
 from IPython import embed
 import LoRA.loralib as lora
-def save_model( model, config, suffix, folder_time, save_lora= False):
+
+def save_model( model, config, suffix, folder_time, epoch,save_lora= False):
         """
         implement the logic of saving model
         """
@@ -13,9 +14,6 @@ def save_model( model, config, suffix, folder_time, save_lora= False):
 
         if not os.path.exists(save_path):
             os.makedirs(save_path)
-        # print("path :" , save_path)
-     
-
 
         try:
             if not os.path.exists(os.path.join (save_path, config.model_net_name)):
@@ -24,17 +22,19 @@ def save_model( model, config, suffix, folder_time, save_lora= False):
         except:
              pass
 
-        #save_name = os.path.join(save_path,self.config['save_name'])
         
         save_name = os.path.join(save_dir, config.save_name)
-   
+        
         if not save_lora:
+            print("save full model")
+            print(f"epoch: {epoch}")
             torch.save(model.state_dict(), save_name)
             
-        else:
-            print("saving model with lora")
-            torch.save(lora.lora_state_dict(model, bias='lora_only'), save_name)
-            # torch.save(lora.lora_state_dict(model, bias='all'), save_name)
+            print(f"saving lora model, {save_lora}")
+            split_string = save_name.split("/")
+            split_string[-1] = "lora_only.pth" 
+            save_name = "/".join(split_string) 
+            torch.save(lora.lora_state_dict(model, bias='lora_only'),  save_name )
 
 
 def load_model(config, model ):

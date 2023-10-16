@@ -1,5 +1,5 @@
 # Definition of PyTorch models
-# Author: Rasha Sheikh
+
 
 from torch import nn
 import torch.nn.functional as F
@@ -167,63 +167,12 @@ class UNet2D(nn.Module):
 
 
 
-
-
-
-
-def add_lora_layers(model):
-
-    for sub_module in model.children():
-        desired_submodules = ["init_path" , "down1"]
-        # desired_submodules = ["init_path", "shortcut0", "down1", "shortcut1",
-        #                        "down2" , "shortcut2" , "down3",
-        #                       "up3", "up2" ,"up1" , "out_path"]
-        print(f'desired: {desired_submodules}')
-        embed()
+# function to inject LoRA matrices
+def replace_layers(model, desired_submodules):
+           
         for name, sub_module in model.named_children():
-            if name in desired_submodules:
-                if isinstance(sub_module, nn.Conv2d):
-                    extra_layer = lora.Conv2d(sub_module.in_channels, sub_module.out_channels, sub_module.kernel_size[0], r=2, lora_alpha=2)
-                    sub_module.add_module('extra_layer', extra_layer)
-                                                            
-
-                if isinstance(sub_module, nn.Sequential):
-                    for name, layer in list(sub_module.named_children()):  # Convert to list to avoid modifying the iterator
-                            if isinstance(layer, nn.Conv2d):
-                                extra_layer = lora.Conv2d(layer.in_channels, layer.out_channels, layer.kernel_size[0], r=2, lora_alpha=2)
-                                # Modify the specific block by adding the extra_layer
-                                sub_module.add_module(name, nn.Sequential(layer, extra_layer))
-                                
-                            elif isinstance(layer, ResBlock):
-                                if isinstance(sub_module, nn.Sequential):
-                                    for name, layer in list(sub_module.named_children()):
-                                        if isinstance(layer, ResBlock):
-                                            if isinstance(layer.conv_path, nn.Sequential):
-                                                for i, preactivation_module in enumerate(layer.conv_path):
-                                                    if isinstance(preactivation_module, PreActivationND) and hasattr(preactivation_module, 'layer') and isinstance(preactivation_module.layer, nn.Conv2d):
-                                                            extra_layer = lora.Conv2d(preactivation_module.layer.out_channels,
-                                                                                        preactivation_module.layer.out_channels,
-                                                                                        preactivation_module.layer.kernel_size[0],
-                                                                                            r=2, lora_alpha=2)
-                                                            layer.conv_path[i] = nn.Sequential(preactivation_module, extra_layer)
-
-     
-    return model
-
-
-
-
-def replace_layers(model):
-        
     
-        for name, sub_module in model.named_children():
-            desired_submodules = ['init_path'] #, "down1"]
-            
-            # desired_submodules = ['init_path',"shortcut0", "down1","shortcut1" , "down2"
-            #                         , "shortcut2", "down3", "up3" , "up2" ,"up1", "out_path"]
-            # print("sub", sub_module)
             if name in desired_submodules:
-               
                 for name, layer in list(sub_module.named_children()): 
                     #Conv2d
                     if isinstance(layer, nn.Conv2d):
@@ -264,9 +213,6 @@ def replace_layers(model):
                                 r=2,
                                 lora_alpha=2)
                                 layer.layer = new_lora_layer
-                                        
-
-                    
               
         return model
         

@@ -342,12 +342,8 @@ class Conv2d(nn.Conv2d, LoRALayer):
  
         nn.Conv2d.train(self, mode)
         if mode:
-            # print("in mode")
-            # embed()
             if self.merge_weights and self.merged:
                 # Make sure that the weights are not merged
-                # print("not merging")
-                # embed()
                 self.weight.data -= (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling
                 self.merged = False
         else:
@@ -361,17 +357,15 @@ class Conv2d(nn.Conv2d, LoRALayer):
                 self.merged = True
 
     def forward(self, x: torch.Tensor):
-        # print("in forward")
-        # embed()
+
         if self.r > 0 and not self.merged:
-            # print("inside not merging")
+
             return F.conv2d(
                 x, 
                 self.weight + (self.lora_B @ self.lora_A).view(self.weight.shape) * self.scaling,
                 self.bias, self.stride, self.padding, self.dilation, self.groups
             )
-        # print("not in merging")
-        # embed()
+        
         return nn.Conv2d.forward(self, x)
 
 class Conv1d(ConvLoRA):

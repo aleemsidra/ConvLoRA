@@ -21,12 +21,7 @@ class CalgaryCampinasDataset(Dataset):
         self.scale = scale
         self.fold = config.fold
         self.train = train
-        # self.subj_index = subj_index
-        # print( "self.subj_index",  self.subj_index)
-        # asd
-        # self.site = config.site
         self.site = site
-        # self.site = site  # adddeddd
         self.data_path = config.data_path
         self.source = config.source
         embed()
@@ -48,29 +43,6 @@ class CalgaryCampinasDataset(Dataset):
             self.folder = 'GE_3'
 
         self.load_files(self.data_path)
-
-    def get_fold(self, files):
-        kf = KFold(n_splits=3)
-        
-        folds = kf.split(files)
-        # print("folds", folds)
-        # asd
-        k_i = 1
-        for train_indices, test_indices in folds:
-            
-            if k_i == self.fold:
-                if self.train:
-                    # print("train_indices", train_indices )
-                    indices = train_indices
-                else:
-                    # print("test_indices", test_indices)
-                    indices = test_indices
-                break
-            k_i += 1
-           
-        # print("indices", indices, "\n", len(indices))
-     
-        return files[indices] 
 
     def pad_image(self, img):
         s, h, w = img.shape
@@ -116,7 +88,7 @@ class CalgaryCampinasDataset(Dataset):
      
         images_path = os.path.join(data_path, 'Original', self.folder)
         print("images_path", images_path )
-        # embed()
+
         if self.source and self.train:
 
             self.images_path = os.path.join(data_path, 'Original', self.folder, "train")
@@ -136,31 +108,16 @@ class CalgaryCampinasDataset(Dataset):
         
   
         files = np.array(sorted(os.listdir(self.images_path)))
-        # print("length ", len(files))
-        # embed()
         for i, f in enumerate(files):
-            # asd
-            # print("file_name", f)
+  
             nib_file = nib.load(os.path.join(self.images_path, f))
-            # print("nib_file_dim", nib_file.shape)
             img = nib_file.get_fdata('unchanged', dtype=np.float32) #loadibg metadata
-            # print("image", img) # image loaded in np here
-            # print("img tytpe", type(img))
-           
-            # print("img_num", i, "image_name:", f, "img", img.shape)
-
             slice_range =(25,175) # selected after manual inspection
-            # embed()
-            img = img[slice_range[0]:slice_range[1]+1, :, :]
-            
-            
 
-            # print("ground_truth_name:", os.path.join(data_path, 'Silver-standard', self.folder, f[:-7] + '_ss.nii.gz'))
+            img = img[slice_range[0]:slice_range[1]+1, :, :]
+
             lbl = nib.load(os.path.join(data_path, 'Silver-standard', self.folder, f[:-7] + '_ss.nii.gz')).get_fdata(
                 'unchanged', dtype=np.float32)
-            # print("label shape", lbl.shape)
-            # print("gt_name:", os.path.join(data_path, 'Silver-standard', self.folder, f[:-7] + '_ss.nii.gz'))
-            # embed()
             lbl = lbl[slice_range[0]:slice_range[1]+1, :, :]
 
             if self.scale:
@@ -174,12 +131,6 @@ class CalgaryCampinasDataset(Dataset):
                 img = self.pad_image(img)
             images.append(img)
 
-            
-
-            # print("appended images", "len", len(images), "shape at first index",images[0].shape)
-            # print(images)
-          
-
             if not self.sagittal:
                 lbl = np.moveaxis(lbl, -1, 0)
             if self.rotate:
@@ -188,51 +139,19 @@ class CalgaryCampinasDataset(Dataset):
                 lbl = self.pad_image(lbl)
             labels.append(lbl)
 
-            # print("labels appended ", "len", len(labels), "shape at first index", labels[0].shape)
-
-
-            # print("img.shape[0]", img.shape[0])
-
             spacing = [nib_file.header.get_zooms()] * img.shape[0]
-            # print("spacing", spacing)
-            # asd
             self.voxel_dim.append(np.array(spacing))  
-
-            # print("voxel appended ", len(self.voxel_dim), "shape at first index", self.voxel_dim[0].shape,)
-        
-            # if i ==0:
-            #     break
-        
-        # visulizing images
-        # print(np.array(images).shape) #shape of appended array
-
-        # imageio.imwrite("/home/sidra/Documents/image.png", images[0][:,:,127])
-        # imageio.imwrite("/home/sidra/Documents/label.png", labels[0][:,:,127])
-        # print("image_len", len(images))
    
         images, labels = self.unify_sizes(images, labels)
-  
-        # print("after unifying ", images[0].shape, labels[0].shape)
-  
-        # print("vstack shape", np.vstack(images)[2459].shape)   # vsatck stacking vertically. first dim will be (number of image* first dim of
-        # asd 
+
         self.data = np.expand_dims(np.vstack(images), axis=1)
         self.label = np.expand_dims(np.vstack(labels), axis=1)
         self.voxel_dim = np.vstack(self.voxel_dim)
-        # print(type(self.data), type(self.label), type(self.voxel_dim))
 
-        # print("image_shape", self.data.shape, "label_shape", self.label.shape, "voxel_shape", self.voxel_dim.shape)
-        # print("self.data.shape", self.data.shape)
         self.data = torch.from_numpy(self.data)
         self.label = torch.from_numpy(self.label)
         self.voxel_dim = torch.from_numpy(self.voxel_dim)
-        # print(self.voxel_dim)
-        # asd
-        # embed()
-       
-        # print("self.data", self.data.shape, "self.label:", self.label.shape,
-        #   "self.voxel_dim", self.voxel_dim.shape, "len", len(self.voxel_dim.shape))
-        # asd
+
     def __len__(self):
         return len(self.data)
 
@@ -240,7 +159,6 @@ class CalgaryCampinasDataset(Dataset):
         data = self.data[idx]
         labels = self.label[idx]
         voxel_dim = self.voxel_dim[idx]
-        # asd
         return data, labels, voxel_dim
 
 
@@ -668,11 +586,13 @@ class cc359_3d_volume(Dataset):
 
         # if self.stage == "refine" and not self.train:
         elif self.source == "True" and not self.train:
+   
             self.images_path = os.path.join(data_path, 'Original', self.folder, "val.csv")
             print("val_path ",self.images_path)
 
 
         else:
+           
             print(self.source, self.train)
             self.images_path = os.path.join(data_path, 'Original', self.folder, "test.csv")   # replace it for rest of domains
             print("test_path ", self.images_path)

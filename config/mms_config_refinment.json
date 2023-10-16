@@ -1,0 +1,31 @@
+{
+    "model_net_name" : "refine", 
+    "dataset" : "mms",
+
+    "fold" : -1,
+    "stage" : "refine",
+
+    "num_epochs":  5,
+    "batch_size" : 32,
+    "n_channels_out" : 4,
+    "alpha" :"linear_decay",
+
+    "save_name" : "dc_model.pth",
+  
+    "source": "True",
+    "refine":    "True", 
+  
+    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/OpenDataset/",
+   
+    "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
+
+    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
+
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_mms_seed_42_epoch:50_batch:20_level:1_2023-07-24_03-59-05_PM/dc_model.pth",
+   
+
+    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_mms_seed:42_epoch:50_level:1_2023-07-25_10-31-38_AM/dc_model.pth",
+  
+    "stopping_thresh": 0.005
+    
+  }

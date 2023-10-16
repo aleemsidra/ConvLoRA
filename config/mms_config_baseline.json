@@ -1,23 +1,23 @@
 {
     "model_net_name" : "base_model", 
-    "dataset" : "CC359",
+    "dataset" : "mms",
+    "source" : "True", 
     "fold" : -1,
 
     "num_epochs":  50,
-    "batch_size" : 20,
+    "batch_size" : 32,
     "n_channels_out" : 4,
 
     "save_name" : "dc_model.pth",
   
+    "refine": "False",
 
-    "source":    "True", 
-    "refine" : "False", 
   
-    "data_path":  "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/OpenDataset/",
+    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/OpenDataset/",
    
     "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
 
-    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
+    "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs" ,
 
     "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_mms_2023-07-06_12-45-28_PM/dc_model.pth"
   
