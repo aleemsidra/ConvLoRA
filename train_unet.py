@@ -10,7 +10,7 @@ from torch.autograd import Variable
 import torchvision.utils as vutils
 from torch.utils.data import DataLoader
 from torch import optim
-from tensorboardX import SummaryWriter
+
 from tqdm import tqdm
 import time
 import imageio
@@ -44,11 +44,13 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
     
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)    
     if torch.cuda.is_available():
-      model = model.cuda()
+        model = model.cuda()
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
-    CE_loss = torch.nn.CrossEntropyLoss()
+    
+    class_weights =  dataset_train_dice[0][-1].cuda(device)
+    CE_loss = torch.nn.CrossEntropyLoss(weight=class_weights).cuda(device)
 
-
+    # CE_loss = torch.nn.CrossEntropyLoss()
     for epoch in range(1, num_epochs + 1):
 
         print('----------------------------------------------------------------------')
@@ -59,12 +61,11 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
         model.train()
         train_loss_total = 0.0
         train_loss_total_avg = 0.0
-        
-
         num_steps = 0
+
         for i, batch in enumerate(train_loader):
         
-            input_samples, gt_samples, _ = batch
+            input_samples, gt_samples, _= batch
 
             if torch.cuda.is_available():
                 var_input = input_samples.to(device)
@@ -82,6 +83,7 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
             loss.backward()
             optimizer.step()
             num_steps += 1
+
 
             if epoch % 10 == 0  and wandb_mode == "online": 
             # if wandb_mode == "online": 
@@ -103,27 +105,34 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
             avg_train_dice = []
             for img in range(len(dataset_train_dice)):  # looping over all 3D files
         
-                train_samples, gt_samples, voxel = dataset_train_dice[img]  # Get the ith image, label, and voxel
+                train_samples, gt_samples, voxel, _ = dataset_train_dice[img]  # Get the ith image, label, and voxel
                 slices = []
 
                 for slice_id, img_slice in enumerate(train_samples): # looping over single img             
                     img_slice = img_slice.unsqueeze(0)
                     img_slice = img_slice.to(device)
+
                     preds = model(img_slice)
                     slices.append(preds.squeeze().detach().cpu())
-         
-                
+      
                 segmented_volume = torch.stack(slices, dim=0)
-                # embed()
+  
                 slices.clear()
                 if n_channels_out ==1 :
                     train_dice = sdice(gt_samples.squeeze().numpy()>0,
-                                    torch.sigmoid(segmented_volume).numpy() >0.5,
-                                        voxel[img])
+                                       torch.sigmoid(segmented_volume).numpy() >0.5,
+                                       voxel[img])
                 else:
-                    train_dice =  dice_score(torch.argmax(segmented_volume, dim=1) ,torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
+                    
+                    # print("check train dice")
+                    # embed()
+                    train_dice, _ =  dice_score(torch.argmax(segmented_volume, dim=1), 
+                                            torch.argmax(gt_samples, dim=1),
+                                            n_outputs=n_channels_out)
 
                 avg_train_dice.append(train_dice)
+                
+
                 if epoch % 10 == 0  and wandb_mode == "online":
                 # if  wandb_mode == "online":
                     # print("logging train_dice_images")
@@ -149,12 +158,13 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
 
             for img in range(len(dataset_val)):
   
-                input_samples, gt_samples, voxel = dataset_val[img] # Get the ith image, label, and voxel
+                input_samples, gt_samples, voxel , _ = dataset_val[img] # Get the ith image, label, and voxel
                 slices = []
                 for slice_id, img_slice in enumerate(input_samples):
 
                     img_slice = img_slice.unsqueeze(0)
                     img_slice = img_slice.to(device)
+
                     preds = model(img_slice)
                     slices.append(preds.squeeze().detach().cpu())
 
@@ -164,18 +174,19 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
                 if n_channels_out == 1:
                    
                     loss = weighted_cross_entropy_with_logits(val_segmented_volume.unsqueeze(1), gt_samples)
-                    val_dice = sdice(gt_samples.squeeze().numpy()>0,
+                    val_dice, = sdice(gt_samples.squeeze().numpy()>0,
                                 torch.sigmoid(val_segmented_volume).numpy() >0.5,
                                 voxel[img])
              
                 else: 
-                    loss = CE_loss(val_segmented_volume, torch.argmax(gt_samples, dim=1))
-                    val_dice = dice_score(torch.argmax(val_segmented_volume, dim=1) ,torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
-
+            
+                    loss = CE_loss(val_segmented_volume.cuda(device), torch.argmax(gt_samples, dim=1).cuda(device)) 
+                    val_dice, _ = dice_score(torch.argmax(val_segmented_volume, dim=1),torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
 
                 total_loss += loss.item()
                 avg_val_dice.append(val_dice)
-     
+
+
                 if epoch % 10 == 0 and wandb_mode == "online" :
                 # if  wandb_mode == "online":
                     # print("logging val_dice_images")
@@ -188,7 +199,7 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
             avg_val_dice  =  np.mean(avg_val_dice)
         
             print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss, {val_loss_total_avg}, Valid DC: {avg_val_dice}')
-      
+
             if avg_val_dice > best_acc:
                 best_acc = avg_val_dice
                 print("best_acc- after updation", best_acc)
@@ -203,7 +214,10 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
                             "Valid DC":   avg_val_dice
 
                         })
-    
+
+            # if epoch == 1:
+            #     break
+
     return model
 
 

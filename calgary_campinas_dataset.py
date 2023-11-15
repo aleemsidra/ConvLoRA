@@ -24,7 +24,7 @@ class CalgaryCampinasDataset(Dataset):
         self.site = site
         self.data_path = config.data_path
         self.source = config.source
-        embed()
+   
 
 
         if self.site == 1:
@@ -64,7 +64,7 @@ class CalgaryCampinasDataset(Dataset):
         return np.pad(data_array, ((0, 0), (b, a), (b, a)), mode='edge')
 
     def unify_sizes(self, input_images, input_labels):
-        sizes = np.zeros(len(input_images), np.int)
+        sizes = np.zeros(len(input_images), int)
         for i in range(len(input_images)):
             sizes[i] = input_images[i].shape[-1]
         max_size = np.max(sizes)
@@ -228,7 +228,7 @@ class cc359_refine(Dataset):
         return np.pad(data_array, ((0, 0), (b, a), (b, a)), mode='edge')
 
     def unify_sizes(self, input_images, input_labels):
-        sizes = np.zeros(len(input_images), np.int)
+        sizes = np.zeros(len(input_images), int)
         for i in range(len(input_images)):
             sizes[i] = input_images[i].shape[-1]
         max_size = np.max(sizes)
@@ -466,7 +466,7 @@ class cc359_refine_volume(Dataset):
         return np.pad(data_array, ((0, 0), (b, a), (b, a)), mode='edge')
 
     def unify_sizes(self, input_images, input_labels):
-        sizes = np.zeros(len(input_images), np.int)
+        sizes = np.zeros(len(input_images), int)
         for i in range(len(input_images)):
             sizes[i] = input_images[i].shape[-1]
         max_size = np.max(sizes)
@@ -642,7 +642,7 @@ class cc359_3d_volume(Dataset):
         return np.pad(data_array, ((0, 0), (b, a), (b, a)), mode='edge')
 
     def unify_sizes(self, input_images, input_labels):
-        sizes = np.zeros(len(input_images), np.int)
+        sizes = np.zeros(len(input_images), int)
         for i in range(len(input_images)):
             sizes[i] = input_images[i].shape[-1]
         max_size = np.max(sizes)

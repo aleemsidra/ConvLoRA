@@ -19,13 +19,17 @@ class FeaturesSegmenter(nn.Module):
         super().__init__()
     
         self.conv1 = nn.Conv2d(in_channels, 12, kernel_size=3, padding=1)
+        self.bn1 = nn.BatchNorm2d(12)
         self.conv2 = nn.Conv2d(12, 8, kernel_size=3, padding=1)
+        self.bn2 = nn.BatchNorm2d(8)
         self.conv3 = nn.Conv2d(8, out_channels, kernel_size=3, padding=1)
 
     def forward(self, x_):
      
-        x = F.relu(self.conv1(x_))
-        x = F.relu(self.conv2(x))
+        # x = F.relu(self.conv1(x_))
+        x = F.relu(self.bn1(self.conv1(x_))) 
+        # x = F.relu(self.conv2(x))
+        x = F.relu(self.bn2(self.conv2(x)))
         out = self.conv3(x)
 
         return out
@@ -75,7 +79,6 @@ class UNet2D(nn.Module):
         self.down2 = nn.Sequential(
             nn.BatchNorm2d(n * 2),
             nn.Conv2d(n * 2, n * 4, kernel_size=pooling_size, stride=pooling_size, bias=False),
-
             nn.ReLU(),
             dropout_layer,
             ResBlock2d(n * 4, n * 4, kernel_size=self.kernel_size, padding=self.padding),
@@ -169,7 +172,7 @@ class UNet2D(nn.Module):
 
 # function to inject LoRA matrices
 def replace_layers(model, desired_submodules):
-           
+
         for name, sub_module in model.named_children():
     
             if name in desired_submodules:

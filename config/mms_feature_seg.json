@@ -4,28 +4,26 @@
 
     "fold" : -1,
 
-    "num_epochs":  20,
+    "num_epochs":  50,
     "lr":  0.001,
     "batch_size" : 32,
-    "n_channels_out" : 1,
+    "n_channels_out" : 4,
 
-    "level" : 2,
 
     "save_name" : "dc_model.pth",
-    "dataset" : "cc359", 
   
 
     "source":    "True", 
     "refine" : "False",
 
-  
-    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/CC359/Reconstructed/",
+    "dataset": "mms",
+    "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/OpenDataset/",
    
     "save_path" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/",
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_seed_12345_manual_slicing_epoch:100_batch_32_2023-06-13_10-04-40_PM/dc_model.pth"
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_control_experimet_epoch_50_batchsize_32_train_weights_2023-11-01_04-25-43_PM/dc_model.pth"
   
   }
   

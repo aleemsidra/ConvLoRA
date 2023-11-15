@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from matplotlib.colors import ListedColormap
 from IPython import embed
 import torchvision
+import argparse
 
 
 
@@ -203,14 +204,14 @@ def log_images(input, preds, gt, epoch, stage, img_id = ""):
 
 #     pil_grid_img = log_slices(gt, epoch, stage, img_id )
 #     wandb.log({f"{stage}_Ground truth_Epoch: {epoch}_{img_id}": wandb.Image(pil_grid_img)}, step=wandb.run.step)
-    # embed()
+#     # embed()
 
     
 
 
-        # Log the grid image to WandB
-    # wandb.log({"var_gt_grid": wandb.Image(pil_grid_img, caption="Variable Ground Truth Grid")})
+#         # Log the grid image to WandB
+#     wandb.log({"var_gt_grid": wandb.Image(pil_grid_img, caption="Variable Ground Truth Grid")})
     
-    # wandb.log({"var_gt_grid": wandb.Image(pil_grid_img, caption=f"")})
+#     wandb.log({"var_gt_grid": wandb.Image(pil_grid_img, caption=f"")})
 
-    # wandb.log({f"{epoch}_Ground truth_Epoch: ": wandb.Image(pil_grid_img)}, step=wandb.run.step)
+#     wandb.log({f"{epoch}_Ground truth_Epoch: ": wandb.Image(pil_grid_img)}, step=wandb.run.step)

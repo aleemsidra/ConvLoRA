@@ -24,7 +24,7 @@
     "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_seed_42_manual_slicing_epoch:100_batch_32_2023-06-12_11-56-58_PM/dc_model.pth",
                                                                               
 
-    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_head:saved_at_epoch:20_2023-06-13_04-47-43_PM/dc_model.pth",
+    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_level:down_3_epoch:20_batch:32_lr:0.001_seed:12345_2023-11-08_03-57-46_PM/dc_model.pth",
   
     "stopping_thresh": 0.005
     

@@ -31,7 +31,7 @@ from LoRA.loralib.utils import mark_only_lora_as_trainable
 
 
 
-def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix, wandb_mode, add_lora = False, initial_lr=0.001, level=0, device=torch.device("cuda:0")):
+def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix, wandb_mode, add_lora = False, initial_lr=0.001, device=torch.device("cuda:0")):
     
     num_epochs = config.num_epochs
     batch_size = config.batch_size
@@ -43,7 +43,7 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
     wandb_run = wandb.init( project='domain_adaptation', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     train_loader = DataLoader(dataset_train, batch_size=batch_size,
                               shuffle=True, num_workers=0, drop_last=True)
-    
+    level = config.level
     in_channels = 16 * (2 ** level)
     features_segmenter = FeaturesSegmenter(in_channels=in_channels, out_channels=n_channels_out)
     features_segmenter.load_state_dict(torch.load(config.head_checkpoint))
@@ -62,11 +62,11 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
         for p in model.init_path.parameters():
             p.requires_grad = True
     
-    if level ==0 and add_lora:
+    if level == 0 and add_lora:
         model = replace_layers(model)
         model.load_state_dict(torch.load(config.checkpoint), strict = False) 
         mark_only_lora_as_trainable(model,bias='lora_only')
-        # mark_only_lora_as_trainable(model,bias='all')
+
 
     model.cuda(device)
     print("lora model loaded")
@@ -124,7 +124,8 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                 layer_activations = model.init_path(var_input)
                 preds = features_segmenter(layer_activations)
             else:  # level = 1
-    
+                print("in level 1")
+                embed()
                 layer_activations_0 = model.init_path(var_input)
                 layer_activations_1 = model.down1(layer_activations_0)
                 logits_ = features_segmenter(layer_activations_1)
@@ -262,7 +263,7 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                 train_dice_total_avg_old = avg_val_dice
                 print("best_acc- after updation", train_dice_total_avg_old)
          
-                save_model(model, config, suffix, folder_time, save_lora= True) # True to save lora model
+                save_model(model, config, suffix, folder_time) 
           
             print(f'Epoch: {epoch}, Train Loss: {train_loss_total_avg}, Train DC: {avg_train_dice}, Valid Loss, {val_loss_total_avg}, Valid DC: {avg_val_dice}')
 
@@ -275,5 +276,8 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                                 "Valid DC":   avg_val_dice
 
                             })
+
+            # if epoch == 1:
+            #     break
             
     return model

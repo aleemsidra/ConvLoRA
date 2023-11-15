@@ -191,6 +191,7 @@ def sigmoid(x):
  
 
 
+# def dice_score(input_, target, n_outputs, print_=False, average=True):
 def dice_score(input_, target, n_outputs, print_=False, average=True):
 ## for M&M
     eps = 0.0001
@@ -206,7 +207,8 @@ def dice_score(input_, target, n_outputs, print_=False, average=True):
             print(dice)
     else:
         dice = torch.zeros(n_outputs - 1)
-       
+        # dice = torch.zeros(n_outputs)
+
         for c in range(1, n_outputs):
             iflat_ = iflat == c
             tflat_ = tflat == c
@@ -218,12 +220,16 @@ def dice_score(input_, target, n_outputs, print_=False, average=True):
             if print_:
                 print(c, d.item())
             dice[c - 1] += d
-
+            # dice[c] += d
+        print("dice,", dice)
+        # embed()
         if average:
-   
-            dice = torch.sum(dice) / (n_outputs - 1)
-
-    return dice
+            avg_dice = torch.sum(dice) / (n_outputs - 1)
+         
+    if n_outputs ==1:
+        return  dice
+    else:
+        return avg_dice, dice
 
 def pad_data(data_array, max_size):
     current_size = data_array.shape[-1]

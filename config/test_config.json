@@ -6,13 +6,10 @@
     "fold" : -1,
 
     "num_epochs": 20,
-    "batch_size" : 8,
+    "batch_size" : 32,
     "n_channels_out" : 1,
 
     "save_name" : "dc_model.pth",
-
-    "adapt_method" : "full_lora",
-  
 
     "source":    "False", 
     "refine" : "False",
@@ -23,6 +20,6 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "base_model_checkpoint" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_seed_42_manual_slicing_epoch:100_batch_32_2023-06-12_11-56-58_PM/dc_model.pth",  
-    "lora_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/refine_constrained_lora_epoch_5_batch:32_lr:0.0001_seed:42_target:siemens_15_2023-10-15_01-38-23_PM/dc_model.pth"   
+    "base_model_checkpoint" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_seed_42_manual_slicing_epoch:100_batch_32_2023-06-12_11-56-58_PM/dc_model.pth",
+    "lora_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/refine_level:full_lora_epoch:5_batch:32_lr:0.0001_seed_42_target:ge_15_2023-11-09_11-22-02_AM/dc_model.pth"   
   }

@@ -12,7 +12,7 @@ from mms_dataset import MMSDataset, mms_3d_volume
 from utils.utils import process_config
 
 from train_unet import train_model
-from train_features_segmenter import train
+from train_features_segmenter import early_feature_segmentor
 from adaptation import target_adaptation
 
 import matplotlib.pyplot as plt
@@ -46,50 +46,50 @@ def main(args, now, suffix, wandb_mode):
         print('----------------------------------------------------------------------')
         
         print(f"step: {args.step}, data: {args.data}")
-
+  
         if args.step == "base_model" or args.step == "feature_segmentor":
-            
             if args.data == "cc359":
-
+                    print(f'dataset: {args.data}')
                     train_data = CalgaryCampinasDataset(config,  args.site)
                     train_dice_data = cc359_3d_volume(config, args.site)
                     val_data = cc359_3d_volume(config, args.site,train= False)
                     print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
-
+         
             elif args.data == "mms":
+                    print(f'dataset: {args.data}')
                     train_data = MMSDataset(config, args.site)
-                
                     train_dice_data = mms_3d_volume(config, args.site)
                     val_data = mms_3d_volume(config, args.site, train= False)
-                    
+                    # embed()
                     print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
-       
-
+            
         #-------------------------------------------------------------------------------#
         if args.step == "base_model":
             print(f"Step: {args.step}")
             train_model(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
 
         elif args.step == "feature_segmentor":
-            print("Step: Feature segmentor")
-            train(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
-
-             
+            print(f"Step: {args.step}")
+            early_feature_segmentor(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
+  
         else:
-            print("Step: adaptation")
+            print(f"Step: {args.step}")
             if args.data == "cc359":
                 train_data = cc359_refine(config, args.site)
                 train_dice_data = cc359_3d_volume(config, args.site)
                 val_data = cc359_3d_volume(config, args.site, train= False)
                 print(f'data loaded:  {args.data} ')
+                print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
+          
              
             else:
                 train_data = MMSDataset(config, args.site, train = True)
                 train_dice_data = mms_3d_volume(config, args.site)
                 val_data = mms_3d_volume(config, args.site, train= False)
                 print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
-            
-        target_adaptation(train_data, train_dice_data, val_data, args.adapt, config, 
+       
+
+            target_adaptation(train_data, train_dice_data, val_data, args.adapt, config, 
                           suffix, wandb_mode)
                                 
     else:
@@ -98,13 +98,12 @@ def main(args, now, suffix, wandb_mode):
         print('----------------------------------------------------------------------')
         print(f'dataset: {args.data}')
 
-        if args.data == "cc359":
-        
+        if args.data == "cc359": 
             test_data =   cc359_3d_volume(config, args.site, train= False)
             
         else:
             test_data =   mms_3d_volume(config, args.site, train= False)
-
+            
         final_avg_dice, loss = test(test_data, args.adapt, config, suffix, wandb_mode)
         print(f"Final average dice score: {final_avg_dice}, Total loss: {loss}")
   

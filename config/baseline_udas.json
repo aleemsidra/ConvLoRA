@@ -12,6 +12,7 @@
   
 
     "source":    "True", 
+    "refine" : "False",
   
     "data_path": "/home/sidra/Documents/Domain_Apatation/UDAS/src/Data/CC359/Reconstructed/",
    

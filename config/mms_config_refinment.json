@@ -3,9 +3,9 @@
     "dataset" : "mms",
 
     "fold" : -1,
-    "stage" : "refine",
 
-    "num_epochs":  5,
+
+    "num_epochs":  20,
     "batch_size" : 32,
     "n_channels_out" : 4,
     "alpha" :"linear_decay",
@@ -21,10 +21,10 @@
 
     "save_log_to" : "/home/sidra/Documents/Domain_Apatation/UDAS/src/logs",  
 
-    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_mms_seed_42_epoch:50_batch:20_level:1_2023-07-24_03-59-05_PM/dc_model.pth",
+    "checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/base_model_epoch_50_batch:32_lr:0.001_seed:42_2023-10-16_06-43-47_PM/dc_model.pth",
    
 
-    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_mms_seed:42_epoch:50_level:1_2023-07-25_10-31-38_AM/dc_model.pth",
+    "head_checkpoint": "/home/sidra/Documents/Domain_Apatation/UDAS/src/checkpoints/head_control_experimet_epoch_50_batch_size_32_train_weights_2023-11-01_07-41-20_PM/dc_model.pth",
   
     "stopping_thresh": 0.005
     
