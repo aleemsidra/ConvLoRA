@@ -140,10 +140,8 @@ class UNet2D(nn.Module):
 
 
     def forward(self, x):
-        # print(" in forward function")
 
-        x0_0 = self.init_path[0](x)
-        # embed()
+        x0_0 = self.init_path[0](x)     
         x0_1 = self.init_path[1](x0_0)
         x0_2 = self.init_path[2](x0_1)
         x0_3 = self.init_path[3](x0_2)
@@ -170,8 +168,9 @@ class UNet2D(nn.Module):
 
 
 
-# function to inject LoRA matrices
+
 def replace_layers(model, desired_submodules):
+        # inject LoRA matrices
 
         for name, sub_module in model.named_children():
     

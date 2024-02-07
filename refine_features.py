@@ -24,7 +24,6 @@ from models import replace_layers
 from utils.utils import log_images
 from datetime import datetime
 from IPython import embed
-# from calgary_campinas_dataset import CalgaryCampinasDataset
 from save_model import save_model
 
 from LoRA.loralib.utils import mark_only_lora_as_trainable
@@ -124,8 +123,7 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                 layer_activations = model.init_path(var_input)
                 preds = features_segmenter(layer_activations)
             else:  # level = 1
-                print("in level 1")
-                embed()
+           
                 layer_activations_0 = model.init_path(var_input)
                 layer_activations_1 = model.down1(layer_activations_0)
                 logits_ = features_segmenter(layer_activations_1)
@@ -169,8 +167,6 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                     img_slice = img_slice.to(device)
                     stronger_pred = model(img_slice)
                     stronger_predictions.append(stronger_pred.squeeze().detach().cpu())
-                    # del stronger_pred 
-                
                     
                     if level == 0:
                         layer_activations = model.init_path(img_slice)
@@ -192,19 +188,16 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                 predictions.clear()
                 stronger_preds_prob = torch.sigmoid(stronger_preds)
           
-                if n_channels_out == 1:
-                    train_dice = sdice(stronger_preds_prob.numpy() > 0.5,
-                                    torch.sigmoid(preds).numpy() > 0.5,
-                                        voxel[img])
-                else:
- 
-                    train_dice = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
+                
+                train_dice = sdice(stronger_preds_prob.numpy() > 0.5,
+                                torch.sigmoid(preds).numpy() > 0.5,
+                                    voxel[img])
                 avg_train_dice.append(train_dice)
 
             avg_train_dice = np.mean(avg_train_dice)
         
         print(f" after train dice, epoch {epoch: }-> check  weights")
-        embed()
+     
         print('----------------------------------------------------------------------')
         print('                    Val Dice Calculation')
         print('----------------------------------------------------------------------')
@@ -240,21 +233,9 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
                                         stronger_preds_prob.numpy() > 0.5,
                                         voxel[img])
                     
-                # else:
-                  
-                #     # loss = CE_loss(segmented_volume, torch.argmax(stronger_preds, dim=1))
-                #     # loss = -torch.mean(F.log_softmax(gt_samples, dim=1)*F.softmax(stronger_preds, dim=1)) 
-                #     # val_dice = dice_score(torch.argmax(segmented_volume, dim=1) ,torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
-                    # loss = -torch.mean(F.log_softmax(segmented_volume, dim=1)*F.softmax(stronger_preds, dim=1))         
-                    # val_dice = dice_score(torch.argmax(segmented_volume, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
-
-                    # val_dice = dice_score(torch.argmax(stronger_preds, dim=1) ,torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
-
-        
+                
                 total_loss += loss.item()
                 avg_val_dice.append(val_dice)
-
-
 
             avg_val_dice = np.mean(avg_val_dice)
             val_loss_total_avg = total_loss / len(dataset_train_dice)
@@ -277,7 +258,5 @@ def train_target(dataset_train, dataset_train_dice, dataset_val, config, suffix,
 
                             })
 
-            # if epoch == 1:
-            #     break
             
     return model
