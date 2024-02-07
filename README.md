@@ -30,6 +30,8 @@ Task Related Arguments
 
 ```seed:``` Seed value for reproducibility
 
+```test:``` Flag to activate inference
+
 
 ## Training scripts 
 Training base model
@@ -52,6 +54,18 @@ Adaptation
 python main.py --config ./config/refinment.json --data "cc359" --site 3  --step "adapt"  --seed 1234  --wandb_mode "online"  --suffix <"user defined">
 
 ```
+
+
+## Inference
+
+```
+python main.py --config ./config/refinment.json --data "cc359" --site 3  --step "adapt"  --seed 1234  --wandb_mode "online"  --suffix <"user defined">
+
+python main.py --config ./config/test_baseline.json --data "cc359" --site 3  --step "test" --seed 1234 ---wandb_mode "online" --suffix <"user defined"> --test test --adapt "lora" 
+
+
+```
+
 
 ## Contact
 Feel free to raise an issue or contact me at sidra.aleem2@mail.dcu.ie for queries and discussions.
