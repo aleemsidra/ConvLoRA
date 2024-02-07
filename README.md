@@ -1,5 +1,5 @@
 ## Overview
-**CONVLORA AND ADABN BASED DOMAIN ADAPTATION VIA SELF-TRAINING**
+**CnvLoRA and AdaBN Based Domain Adaptation via Self-Training**
 
   
 The code repository for paper "ConvLoRA and AdaBN based DOMAIN ADAPTATION via SELF-TRAINING" accepted at [IEEE ISBI 2024](https://biomedicalimaging.org/2024/) in PyTorch.
