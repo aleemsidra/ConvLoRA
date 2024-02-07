@@ -59,8 +59,6 @@ python main.py --config ./config/refinment.json --data "cc359" --site 3  --step 
 ## Inference
 
 ```
-python main.py --config ./config/refinment.json --data "cc359" --site 3  --step "adapt"  --seed 1234  --wandb_mode "online"  --suffix <"user defined">
-
 python main.py --config ./config/test_baseline.json --data "cc359" --site 3  --step "test" --seed 1234 ---wandb_mode "online" --suffix <"user defined"> --test test --adapt "lora" 
 
 
