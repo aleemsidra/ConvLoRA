@@ -9,7 +9,7 @@ The code repository for paper "ConvLoRA and AdaBN based DOMAIN ADAPTATION via SE
 
 ## Results
 
-<p align="center"><img width="80%" src="/imgs/results.png" /></p>
+<p align="center"><img width="60%" src="/imgs/results.png" /></p>
 
 ## Dataset
 ## [CC359 ](https://www.ccdataset.com/home)
