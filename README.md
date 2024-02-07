@@ -20,10 +20,13 @@ Following arguments are required to run the code. The details are in <main.py>
 
 Task Related Arguments
 
-<dataset:> Option for the dataset, default to CC359
-<site:> Site in CC359 dataset
-<step:> Specifies stage of adaptation pipeline (base_model, refine, adapt)
-<seed:> Seed value for reproducibility
+```dataset:``` Option for the dataset, default to CC359
+
+```site:``` Site in CC359 dataset
+
+```step:``` Specifies stage of adaptation pipeline (base_model, refine, adapt)
+
+```seed:``` Seed value for reproducibility
 
 
 ## Training scripts 
