@@ -5,11 +5,11 @@
 The code repository for paper "ConvLoRA and AdaBN based DOMAIN ADAPTATION via SELF-TRAINING" accepted at [IEEE ISBI 2024](https://biomedicalimaging.org/2024/) in PyTorch.
 
 
-<p align="center"><img width="80%" src="/imgs/uda_arch.png" /></p>
+<p align="center"><img width="50%" src="/imgs/uda_arch.png" /></p>
 
 ## Results
 
-<p align="center"><img width="60%" src="/imgs/results.png" /></p>
+<p align="center"><img width="80%" src="/imgs/results.png" /></p>
 
 ## Dataset
 ## [CC359 ](https://www.ccdataset.com/home)
