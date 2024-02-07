@@ -6,7 +6,7 @@ The code repository for paper "ConvLoRA and AdaBN based DOMAIN ADAPTATION via SE
 
 ## ConvLoRA
 
-We propose Convolutional Low-Rank Adaptation (ConvLoRA), as an adaptation of Low-Rank Domain Adaptation (LoRA) in LLMs. ConvLoRA is specifically
+We propose Convolutional Low-Rank Adaptation (ConvLoRA), as an adaptation of [Low-Rank Domain Adaptation (LoRA)](https://arxiv.org/abs/2106.09685) in LLMs. ConvLoRA is specifically
 designed for application in Convolutional Neural Networks (CNNs), presenting a novel approach to address domain adaptation challenges in the context of image data. Instead of creating dedicated fine-tuned models for multiple target domains, each with the same number of parameters as the base model, we inject several ConvLoRA adapters into the base model pre-trained on the source domain, and only adapt the ConvLoRA parameters, while keeping all other parameters. This method allows faster updates by adapting only a small set of domain specific parameters. 
 
 <p align="center"><img width="60%" src="/imgs/uda_arch.png" /></p>
