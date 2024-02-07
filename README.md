@@ -4,6 +4,7 @@
   
 The code repository for paper "ConvLoRA and AdaBN based DOMAIN ADAPTATION via SELF-TRAINING" accepted at [IEEE ISBI 2024](https://biomedicalimaging.org/2024/) in PyTorch.
 
+Inspired by the recent advances in the LLMs, we propose a novel multi-target UDA approach that leverages the concept of our proposed parameter-efficient ConvLoRA adapter and AdaBN.  Our framework is generic, flexible and easily integrates with CNN-based architectures, significantly lowering training costs while enhancing adaptation.
 
 <p align="center"><img width="60%" src="/imgs/uda_arch.png" /></p>
 
