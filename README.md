@@ -4,7 +4,10 @@
   
 The code repository for paper "ConvLoRA and AdaBN based DOMAIN ADAPTATION via SELF-TRAINING" accepted at [IEEE ISBI 2024](https://biomedicalimaging.org/2024/) in PyTorch.
 
-Inspired by the recent advances in the LLMs, we propose a novel multi-target UDA approach that leverages the concept of our proposed parameter-efficient ConvLoRA adapter and AdaBN.  Our framework is generic, flexible and easily integrates with CNN-based architectures, significantly lowering training costs while enhancing adaptation.
+## ConvLoRA
+
+We propose Convolutional Low-Rank Adaptation (ConvLoRA), as an adaptation of Low-Rank Domain Adaptation (LoRA) in LLMs. ConvLoRA is specifically
+designed for application in Convolutional Neural Networks (CNNs), presenting a novel approach to address domain adaptation challenges in the context of image data. Instead of creating dedicated fine-tuned models for multiple target domains, each with the same number of parameters as the base model, we inject several ConvLoRA adapters into the base model pre-trained on the source domain, and only adapt the ConvLoRA parameters, while keeping all other parameters. This method allows faster updates by adapting only a small set of domain specific parameters. 
 
 <p align="center"><img width="60%" src="/imgs/uda_arch.png" /></p>
 
