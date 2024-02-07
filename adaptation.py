@@ -1,5 +1,4 @@
-# Refine UNet early features on the Calgary Campinas or M&Ms Dataset
-
+# Adapt base model on the Calgary Campinas
 
 import numpy as np
 import wandb
@@ -52,8 +51,7 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
     # data_loader
     train_loader = DataLoader(dataset_train, batch_size=batch_size,
                               shuffle=True, num_workers=0, drop_last=True)
-    # Early Feature Segmentor
-
+    # ESH
     in_channels = 16 * (2 ** level)
     features_segmenter = FeaturesSegmenter(in_channels=in_channels, out_channels=n_channels_out)
     features_segmenter.load_state_dict(torch.load(config.head_checkpoint))
@@ -67,28 +65,13 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
         p.requires_grad = False
         model.cuda(device)   
 
-    # CE_loss = torch.nn.CrossEntropyLoss()
-    # class_weights = torch.tensor([0.2, 1.0, 1.0, 1.0])
-    # class_we
-    # CE_loss = torch.nn.CrossEntropyLoss(weight=class_weights).cuda(device)
-
-
-    class_weights =  dataset_train_dice[0][-1].cuda(device)
-    CE_loss =  torch.nn.CrossEntropyLoss(weight=class_weights.cuda(device))
-
-    # class_weights =  dataset_train_dice[0][-1].cuda(device)
-    # CE_val_loss =  torch.nn.CrossEntropyLoss(weight=class_weights.cuda(device))
-
-    print('----------------------------------------------------------------------')
-    print('                    Accuracy before Adaptation')                                                
-    print('----------------------------------------------------------------------')
+    # -------------------- Based model accuracy before Adaptation-------------------- 
     with torch.no_grad():
 
         model.eval()
         avg_train_dice = []
         for img in range(len(dataset_val)):  # looping over all 3D files
-            train_samples, _, voxel = dataset_val[img]  # ((((ORIGNAL)))) 
-            # train_samples, var_gt, voxel = dataset_val[img]  # Get the ith image, label, and voxel   
+            train_samples, _, voxel = dataset_val[img]  
             stronger_predictions = []
             predictions = []
 
@@ -97,7 +80,7 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                 img_slice = img_slice.to(device)
                 stronger_pred = model(img_slice)
                 stronger_predictions.append(stronger_pred.squeeze().detach().cpu())
-
+                # level specifies ESH position
                 if level == 0:
                     layer_activations = model.init_path(img_slice)
                     prediction = features_segmenter(layer_activations)
@@ -128,11 +111,6 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                 if level != 4:
                     predictions.append(prediction.squeeze().detach().cpu())
 
-
-           
-            if level == 4:
-                preds = var_gt.squeeze()
-            
             else: 
                 preds = torch.stack(predictions, dim=0)
 
@@ -140,37 +118,23 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
             stronger_predictions.clear()
             stronger_preds_prob = torch.sigmoid(stronger_preds)
            
-            if n_channels_out == 1:
-                # embed()
-                # loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
-                train_dice = sdice(torch.sigmoid(preds).numpy() > 0.5,
-                                    stronger_preds_prob.numpy() > 0.5,
-                                    voxel[img])
-                
-
-
-            else:
-                # loss = -torch.mean(F.log_softmax(preds, dim=1)*F.softmax(stronger_preds, dim=1))     
-                loss = CE_loss(preds.cuda(device), torch.argmax(stronger_preds, dim=1).cuda(device))
-                # loss = CE_val_loss(preds.cuda(device), torch.argmax(stronger_preds, dim=1).cuda(device))
-                train_dice, _ = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
-            
-            
-
+          
+            train_dice = sdice(torch.sigmoid(preds).numpy() > 0.5,
+                                stronger_preds_prob.numpy() > 0.5,
+                                voxel[img])
             avg_train_dice.append(train_dice)
 
         avg_train_dice = np.mean(avg_train_dice)
 
-
     print('initial dice', avg_train_dice)
     train_dice_total_avg_old = avg_train_dice
  
-
-
     print('----------------------------------------------------------------------')
     print('                    Adaptation Method')                                                
     print('----------------------------------------------------------------------')
 
+    # Depending on type of adaptation, inserting ConvLoRA to respective modules
+    # AdaBN: Setting batch statistics (mean and variance) gradient to True
 
     if adapt == "constrained_lora":
         desired_submodules = ['init_path']
@@ -185,7 +149,6 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
         model = replace_layers(model, desired_submodules)
         mark_only_lora_as_trainable(model,bias='lora_only')
         
-        # embed()
         for name, param in model.init_path.named_parameters():
                 if "bn" in name:
                     param.requires_grad = True 
@@ -199,7 +162,7 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
         model = replace_layers(model, desired_submodules)
         mark_only_lora_as_trainable(model,bias='lora_only')
         
-        # embed()
+
         for name, param in model.init_path.named_parameters():
                 if "bn" in name:
                     param.requires_grad = True 
@@ -213,11 +176,7 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                   param.requires_grad = True
     
     elif adapt == "constrained_lora_down3":
-        # desired_submodules = ['init_path', "down1", "down2", "down3"]
-        # model = replace_layers(model, desired_submodules)
-        # mark_only_lora_as_trainable(model,bias='lora_only')
-        
-        # embed()
+
         for name, param in model.init_path.named_parameters():
                 if "bn" in name:
                     param.requires_grad = True 
@@ -234,16 +193,12 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
              if "bn" in name or isinstance(name, nn.BatchNorm2d):
                   param.requires_grad = True
 
-
-    
     elif adapt == "constrained_da":
         desired_submodules = ['init_path']
         for name, param in model.init_path.named_psarameters():
                     param.requires_grad = True 
-    
-    
+
     elif  adapt == "full_lora":
- 
         lora_model = copy.deepcopy(model)
         desired_submodules = ['init_path', "down1", "down2", "up3", "up2", "up1"]
         for name, param in lora_model.named_parameters():
@@ -258,12 +213,12 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
     else:
             raise ValueError("Invalid Value ")
 
-    print(f"params to be adapted")  
+    print(f"params to be adapted") 
+
     for name, param in model.named_parameters():
         if param.requires_grad:
             print(name)  
                                
-    embed()
     model.cuda(device)
     model.load_state_dict(torch.load(config.checkpoint),strict = False) 
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
@@ -273,26 +228,19 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
     print('                    Train Loss Calculation')
     print('----------------------------------------------------------------------')
     
-
     for epoch in range(1, num_epochs + 1):
        
-        model.train() # original 
-        # lora_model.train()
-        model.eval()
+        model.train() 
         train_loss_total = 0.0
         num_steps = 0
 
         for i, batch in enumerate(train_loader):
               
-            input_samples, _, _ = batch  # original
-            # input_samples, var_gt, _ = batch 
-     
+            input_samples, _, _ = batch  
             var_input = input_samples.cuda(device)
-            # if level == 4: 
-            stronger_preds = model(var_input)
-            # else:
-                # preds = model(var_input)
      
+            stronger_preds = model(var_input)
+        
             if level == 0:
                 layer_activations = model.init_path(var_input)
                 preds = features_segmenter(layer_activations)
@@ -321,22 +269,11 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                 preds = F.interpolate(logits_, scale_factor=8, mode='bilinear')
             
             elif level == 4:
-                #full convlora
-                # lora_model.train()
                 preds = lora_model(var_input)
-
-
-            if n_channels_out == 1:
                 
-                stronger_preds_prob = torch.sigmoid(stronger_preds)
-                train_loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
-               
-            else:
-                # loss = -torch.mean(F.log_softmax(preds, dim=1)*F.softmax(stronger_preds, dim=1)) 
-      
-                # loss = CE_loss(preds, torch.argmax(stronger_preds, dim=1))   
-                train_loss = CE_loss(preds.cuda(device), torch.argmax(stronger_preds, dim=1).cuda(device))
-                    
+            stronger_preds_prob = torch.sigmoid(stronger_preds)
+            train_loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob)
+
             train_loss_total += train_loss.item()
             optimizer.zero_grad()
             train_loss.backward()
@@ -349,7 +286,7 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
         print('----------------------------------------------------------------------')
         print('                    Train Dice Calculation')
         print('----------------------------------------------------------------------')
-        # embed()
+
         with torch.no_grad():
             model.eval()
 
@@ -408,25 +345,13 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                 stronger_predictions.clear()
                 predictions.clear()
                 stronger_preds_prob = torch.sigmoid(stronger_preds)
-          
-                if n_channels_out == 1:
      
-                    train_dice = sdice(torch.sigmoid(preds).numpy() > 0.5,
-                                       stronger_preds_prob.numpy() > 0.5,
-                                    
-                                        voxel[img])
-                    
-                else:
-                    train_dice, _ = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
-
+                train_dice = sdice(torch.sigmoid(preds).numpy() > 0.5,
+                                    stronger_preds_prob.numpy() > 0.5,
+                                
+                                    voxel[img])
 
                 avg_train_dice.append(train_dice)
-
-                # if epoch % 5 == 0  and wandb_mode == "online":
-                #     mask = torch.zeros(size=segmented_volume.shape) 
-                #     mask[segmented_volume > 0.5] = 1 
-                #     log_images(train_samples, mask.unsqueeze(1), gt_samples, epoch , "Train_dice") 
-                    #  log_images(input_samples, torch.argmax(preds, dim=1).cpu().numpy(), torch.argmax(stronger_preds, dim=1), epoch, "Train_Dice", img) 
             avg_train_dice = np.mean(avg_train_dice)
         
         print('----------------------------------------------------------------------')
@@ -441,7 +366,7 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
 
             for img in range(len(dataset_val)):  # looping over all 3D files
 
-                val_samples, _, voxel = dataset_val[img]  # Get the ith image, label, and voxel   # Get the ith image, label, and voxel 
+                val_samples, _, voxel = dataset_val[img]  # Get the ith image, label, and voxel   
                 stronger_predictions = []
                 slices = []
                 for slice_id, img_slice in enumerate(val_samples): # looping over single img    
@@ -485,7 +410,6 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
 
                     predictions.append(prediction.squeeze().detach().cpu())
 
-
                 preds = torch.stack(predictions, dim=0)
                 stronger_preds = torch.stack(stronger_predictions, dim= 0)
                 stronger_predictions.clear()
@@ -493,25 +417,15 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                 slices.clear()
                 stronger_preds_prob = torch.sigmoid(stronger_preds)
         
-                if n_channels_out == 1:
-
-                    val_loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob.squeeze())
-                    val_dice = sdice(torch.sigmoid(preds).numpy() > 0.5,
-                                    stronger_preds_prob.numpy() > 0.5,
-                                    voxel[img])
-               
-                else:
-                    # val_loss = -torch.mean(F.log_softmax(preds, dim=1)*F.softmax(stronger_preds, dim=1))   
-                    val_loss = CE_loss(preds.cuda(), torch.argmax(stronger_preds, dim=1).cuda())      
-                    # val_loss = CE_val_loss(preds.cuda(device), torch.argmax(stronger_preds, dim=1).cuda(device)) 
-                    val_dice, _ = dice_score(torch.argmax(preds, dim=1), torch.argmax(stronger_preds, dim=1), n_outputs=n_channels_out)
-                     
+                val_loss = weighted_cross_entropy_with_logits(preds, stronger_preds_prob.squeeze())
+                val_dice = sdice(torch.sigmoid(preds).numpy() > 0.5,
+                                stronger_preds_prob.numpy() > 0.5,
+                                voxel[img])
+            
+            
                 total_loss += val_loss.item()
                 avg_val_dice.append(val_dice)
 
-                # if epoch % 5 == 0  and wandb_mode == "online":
-                #      log_images(input_samples, torch.argmax(preds, dim=1).cpu().numpy(), torch.argmax(stronger_preds, dim=1), epoch, "Train_Dice", img) 
-            
             avg_val_dice = np.mean(avg_val_dice)
             val_loss_total_avg = total_loss / len(dataset_train_dice)
 
@@ -528,13 +442,8 @@ def target_adaptation(dataset_train, dataset_train_dice, dataset_val, adapt, con
                                 "Train DC":   avg_train_dice,
                                 "Valid Loss": val_loss_total_avg,
                                 "Valid DC":   avg_val_dice, 
-                                # "LR": initial_lr, 
-                                # "batch_size": batch_size,
-                                # "epochs": num_epochs
-
+        
                             })
 
-        # if epoch == 1:
-        #      break
             
     return model

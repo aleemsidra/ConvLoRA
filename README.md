@@ -38,8 +38,6 @@ Training ESH model
 
 ```
 python main.py --config ./config/feature_seg.json --data "cc359" --site 2 --step "feature_segmentor"  --seed 1234  --wandb_mode "online"  --suffix <"user defined"> 
-
-
 ```
 
 Adaptation

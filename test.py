@@ -28,13 +28,12 @@ from evaluate import dice_score
 from save_model import save_model
 from evaluate import evaluate_preds_surface_dice, sdice
 from datetime import datetime
-from utils.logger import save_config #, write_info_to_logger
+from utils.logger import save_config 
 from utils import logger
 
 
 def test(dataset, adapt, config, suffix, wandb_mode, device=torch.device("cuda:0"), initial_lr=0.001):
-    # num_epochs = config.num_epochs
-    batch_size = config.batch_size
+    
     folder_time = datetime.now().strftime("%Y-%m-%d_%I-%M-%S_%p")
     n_channels_out = config.n_channels_out
 
@@ -44,16 +43,17 @@ def test(dataset, adapt, config, suffix, wandb_mode, device=torch.device("cuda:0
 
     model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)
 
+    # Depending on mode, inject ConvLoRA to respective modules
     if adapt == "lora_only":
         print(f"adapt: {adapt}")
-        model = replace_layers(model, ["init_path"]) # layers to in LoRA matrices
+        model = replace_layers(model, ["init_path"])
         print("layers injected")
         model.load_state_dict(torch.load(config.lora_checkpoint.replace("dc_model.pth", "lora_only.pth")), strict = False)
         model.load_state_dict(torch.load(config.base_model_checkpoint ), strict = False)
 
     elif adapt == "lora:down1":
         print(f"adapt: {adapt}")
-        model = replace_layers(model, ["init_path", "down1"]) # layers to in LoRA matrices
+        model = replace_layers(model, ["init_path", "down1"]) 
         print("layers injected")
         model.load_state_dict(torch.load(config.lora_checkpoint.replace("dc_model.pth", "lora_only.pth")), strict = False)
 
@@ -113,7 +113,6 @@ def test(dataset, adapt, config, suffix, wandb_mode, device=torch.device("cuda:0
 
     for idx in range(len(dataset)):
         # Get the ith image, label, and voxel
-
         input_samples, gt_samples, voxel = dataset[idx]
         print(input_samples.shape)
         slices = []
@@ -127,19 +126,11 @@ def test(dataset, adapt, config, suffix, wandb_mode, device=torch.device("cuda:0
         segmented_volume = torch.stack(slices, axis=0)
         slices.clear()
 
-        if n_channels_out ==1: 
-            loss = weighted_cross_entropy_with_logits(segmented_volume.unsqueeze(1), gt_samples)
-            test_dice = sdice( torch.sigmoid(segmented_volume).numpy() >0.5,
-                                gt_samples.squeeze().numpy()>0,
-                                voxel[idx])
+        loss = weighted_cross_entropy_with_logits(segmented_volume.unsqueeze(1), gt_samples)
+        test_dice = sdice( torch.sigmoid(segmented_volume).numpy() >0.5,
+                            gt_samples.squeeze().numpy()>0,
+                            voxel[idx])
                             
-
-            
-        else:
-            loss = CE_loss(segmented_volume, torch.argmax(gt_samples, dim=1))  
-            test_dice, _ =  dice_score(torch.argmax(segmented_volume, dim=1) ,torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
-
-
         total_loss += loss.item()
         avg_dice.append(test_dice)
 
@@ -147,8 +138,7 @@ def test(dataset, adapt, config, suffix, wandb_mode, device=torch.device("cuda:0
         mask = torch.zeros(size=segmented_volume.shape) 
         mask[torch.sigmoid(segmented_volume) > 0.5] = 1
         log_images(input_samples, mask.unsqueeze(1), gt_samples, 100 , "Test", idx)            
-    
-               
+          
     total_loss_avg = total_loss / len(dataset)
     final_avg_dice = np.mean(avg_dice)
 

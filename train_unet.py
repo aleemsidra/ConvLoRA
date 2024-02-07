@@ -1,4 +1,4 @@
-# Train UNet model on the Calgary Campinas or M&Ms Dataset
+# Train UNet model on the Calgary Campinas 
 
 
 import numpy as np
@@ -42,22 +42,19 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
     
     wandb_run = wandb.init( project='domain_adaptation', entity='sidra', name = config['model_net_name'] + "_" + suffix +"_"+ folder_time, mode =  wandb_mode)
     
-    model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)    
+    model = UNet2D(n_chans_in=1, n_chans_out=n_channels_out, n_filters_init=16)   
+
     if torch.cuda.is_available():
         model = model.cuda()
+
     optimizer = optim.Adam(model.parameters(), lr=initial_lr, weight_decay=0)
     
-    class_weights =  dataset_train_dice[0][-1].cuda(device)
-    CE_loss = torch.nn.CrossEntropyLoss(weight=class_weights).cuda(device)
+    print('----------------------------------------------------------------------')
+    print('                    Training started')
+    print('----------------------------------------------------------------------')
 
-    # CE_loss = torch.nn.CrossEntropyLoss()
     for epoch in range(1, num_epochs + 1):
 
-        print('----------------------------------------------------------------------')
-        print('                    Training started')
-        print('----------------------------------------------------------------------')
-
-        
         model.train()
         train_loss_total = 0.0
         train_loss_total_avg = 0.0
@@ -72,12 +69,8 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
                 var_gt = gt_samples.to(device)
           
             preds = model(var_input)
-            if n_channels_out == 1:
-               loss = weighted_cross_entropy_with_logits(preds, var_gt)
+            loss = weighted_cross_entropy_with_logits(preds, var_gt)
             
-            else:
-                loss = CE_loss(preds, torch.argmax(var_gt, dim=1))          
-
             train_loss_total += loss.item()
             optimizer.zero_grad()
             loss.backward()
@@ -86,12 +79,10 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
 
 
             if epoch % 10 == 0  and wandb_mode == "online": 
-            # if wandb_mode == "online": 
-                    # print("image", i)
-                    # print("logging training image")
-                    # mask = torch.zeros(size=preds.shape) 
-                    # mask[preds > 0.5] = 1
-                    log_images(input_samples, torch.argmax(preds, dim=1).cpu().numpy(), torch.argmax(var_gt, dim=1).cpu().numpy(), epoch, "Train_Slice_DC",i )   
+                # logging images
+                mask = torch.zeros(size=preds.shape) 
+                mask[preds > 0.5] = 1
+                log_images(input_samples, mask.unsqueeze(1), gt_samples, epoch , "Train_dice") 
 
         train_loss_total_avg = train_loss_total / num_steps
         num_steps = 0
@@ -118,28 +109,17 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
                 segmented_volume = torch.stack(slices, dim=0)
   
                 slices.clear()
-                if n_channels_out ==1 :
-                    train_dice = sdice(gt_samples.squeeze().numpy()>0,
-                                       torch.sigmoid(segmented_volume).numpy() >0.5,
-                                       voxel[img])
-                else:
-                    
-                    # print("check train dice")
-                    # embed()
-                    train_dice, _ =  dice_score(torch.argmax(segmented_volume, dim=1), 
-                                            torch.argmax(gt_samples, dim=1),
-                                            n_outputs=n_channels_out)
-
+       
+                train_dice = sdice(gt_samples.squeeze().numpy()>0,
+                                    torch.sigmoid(segmented_volume).numpy() >0.5,
+                                    voxel[img])  
                 avg_train_dice.append(train_dice)
                 
-
                 if epoch % 10 == 0  and wandb_mode == "online":
-                # if  wandb_mode == "online":
-                    # print("logging train_dice_images")
-                    # mask = torch.zeros(size=segmented_volume.shape) 
-                    # mask[torch.sigmoid(segmented_volume) > 0.5] = 1 #thresholding
-                    # log_images(train_samples, mask.unsqueeze(1), gt_samples, epoch , "Train_dice") 
-                    log_images(train_samples, torch.argmax(segmented_volume, dim=1).cpu().numpy(), torch.argmax(gt_samples, dim=1), epoch, "Train_DC") 
+                    #logging train_dice_images
+                    mask = torch.zeros(size=segmented_volume.shape) 
+                    mask[torch.sigmoid(segmented_volume) > 0.5] = 1 #thresholding
+                    log_images(train_samples, mask.unsqueeze(1), gt_samples, epoch , "Train_dice") 
 
                 
             avg_train_dice = np.mean(avg_train_dice)
@@ -170,30 +150,20 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
 
                 val_segmented_volume = torch.stack(slices, dim=0)
                 slices.clear()
-
-                if n_channels_out == 1:
-                   
-                    loss = weighted_cross_entropy_with_logits(val_segmented_volume.unsqueeze(1), gt_samples)
-                    val_dice, = sdice(gt_samples.squeeze().numpy()>0,
-                                torch.sigmoid(val_segmented_volume).numpy() >0.5,
-                                voxel[img])
-             
-                else: 
-            
-                    loss = CE_loss(val_segmented_volume.cuda(device), torch.argmax(gt_samples, dim=1).cuda(device)) 
-                    val_dice, _ = dice_score(torch.argmax(val_segmented_volume, dim=1),torch.argmax(gt_samples, dim=1), n_outputs=n_channels_out)
-
+   
+                loss = weighted_cross_entropy_with_logits(val_segmented_volume.unsqueeze(1), gt_samples)
+                val_dice, = sdice(gt_samples.squeeze().numpy()>0,
+                            torch.sigmoid(val_segmented_volume).numpy() >0.5,
+                            voxel[img])
+                             
                 total_loss += loss.item()
                 avg_val_dice.append(val_dice)
 
-
                 if epoch % 10 == 0 and wandb_mode == "online" :
-                # if  wandb_mode == "online":
-                    # print("logging val_dice_images")
-                    # mask = torch.zeros(size=val_segmented_volume.shape) 
-                    # mask[torch.sigmoid(val_segmented_volume) > 0.5] = 1
-                    # log_images(input_samples, mask.unsqueeze(1), gt_samples, epoch , "Val_dice", img) 
-                    log_images(train_samples, torch.argmax(val_segmented_volume, dim=1).cpu().numpy(), torch.argmax(gt_samples, dim=1), epoch, "Val_dice", img) 
+                    # logging val_dice_images
+                    mask = torch.zeros(size=val_segmented_volume.shape) 
+                    mask[torch.sigmoid(val_segmented_volume) > 0.5] = 1
+                    log_images(input_samples, mask.unsqueeze(1), gt_samples, epoch , "Val_dice", img) 
 
             val_loss_total_avg = total_loss / len(dataset_val)
             avg_val_dice  =  np.mean(avg_val_dice)
@@ -215,9 +185,7 @@ def train_model( dataset_train,  dataset_train_dice, dataset_val, config, suffix
 
                         })
 
-            # if epoch == 1:
-            #     break
-
+      
     return model
 
 

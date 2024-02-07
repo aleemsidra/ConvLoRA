@@ -28,10 +28,10 @@ def main(args, now, suffix, wandb_mode):
     # Initializing seeds and preparing GPU
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     if device == "cuda":
-        torch.cuda.manual_seed_all(args.seed)  # GPU seed
-    torch.backends.cudnn.deterministic = True  # fix the GPU to deterministic mode
-    torch.manual_seed(args.seed)  # CPU seed
-    random.seed(args.seed)  # python seed for image transformation
+        torch.cuda.manual_seed_all(args.seed)
+    torch.backends.cudnn.deterministic = True  
+    torch.manual_seed(args.seed)  
+    random.seed(args.seed)  
     np.random.seed(args.seed)
    
     config = process_config(os.path.join(os.path.dirname(__file__), args.config))
@@ -48,46 +48,32 @@ def main(args, now, suffix, wandb_mode):
         print(f"step: {args.step}, data: {args.data}")
   
         if args.step == "base_model" or args.step == "feature_segmentor":
-            if args.data == "cc359":
-                    print(f'dataset: {args.data}')
-                    train_data = CalgaryCampinasDataset(config,  args.site)
-                    train_dice_data = cc359_3d_volume(config, args.site)
-                    val_data = cc359_3d_volume(config, args.site,train= False)
-                    print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
+            print(f'dataset: {args.data}')
+            train_data = CalgaryCampinasDataset(config,  args.site)
+            train_dice_data = cc359_3d_volume(config, args.site)
+            val_data = cc359_3d_volume(config, args.site,train= False)
+            print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
          
-            elif args.data == "mms":
-                    print(f'dataset: {args.data}')
-                    train_data = MMSDataset(config, args.site)
-                    train_dice_data = mms_3d_volume(config, args.site)
-                    val_data = mms_3d_volume(config, args.site, train= False)
-                    # embed()
-                    print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
             
-        #-------------------------------------------------------------------------------#
+        #-------Respective training based on step----------#
         if args.step == "base_model":
+            # Train Base Model
             print(f"Step: {args.step}")
             train_model(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
 
         elif args.step == "feature_segmentor":
+            # Train ESH
             print(f"Step: {args.step}")
             early_feature_segmentor(train_data, train_dice_data, val_data, config, suffix, wandb_mode)
   
         else:
+             # Target Domain Adaptation
             print(f"Step: {args.step}")
-            if args.data == "cc359":
-                train_data = cc359_refine(config, args.site)
-                train_dice_data = cc359_3d_volume(config, args.site)
-                val_data = cc359_3d_volume(config, args.site, train= False)
-                print(f'data loaded:  {args.data} ')
-                print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
-          
-             
-            else:
-                train_data = MMSDataset(config, args.site, train = True)
-                train_dice_data = mms_3d_volume(config, args.site)
-                val_data = mms_3d_volume(config, args.site, train= False)
-                print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
-       
+            train_data = cc359_refine(config, args.site)
+            train_dice_data = cc359_3d_volume(config, args.site)
+            val_data = cc359_3d_volume(config, args.site, train= False)
+            print(f'data loaded:  {args.data} ')
+            print(f'train: {len(train_data)}, train_dice: {len(train_dice_data)}, val_data: {len(val_data)}')
 
             target_adaptation(train_data, train_dice_data, val_data, args.adapt, config, 
                           suffix, wandb_mode)
