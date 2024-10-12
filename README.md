@@ -19,10 +19,22 @@ designed for application in Convolutional Neural Networks (CNNs), presenting a n
 ## [CC359 ](https://www.ccdataset.com/home)
 Calgary-Campinas (CC359) dataset is a multi-vendor (GE, Philips, Siemens), multi-field strength (1 5, 3) magnetic resonance (MR) T1-weighted volumetric brain imaging dataset. It has six different domains and contains 359 3D brain MR image volumes, primarily focused on the task of skull stripping. 
 
+## Requirements:
+
+```Install deep_pipe:```
+
+```
+git clone https://github.com/neuro-ml/deep_pipe.git
+cd deep_pipe
+git checkout 5c08d5759d51c0731cc636c2866bb3a538ffab7a
+pip install -e .
+```
+
+Original repository: https://github.com/deepmind/surface-distance
 
 ## Arguments
 
-Following arguments are required to run the code. The details are in <main.py>
+The following arguments are required to run the code. The details are in <main.py>
 
 Task Related Arguments
 
